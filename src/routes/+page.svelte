@@ -7,6 +7,7 @@
   $: parts = splitWord(words[index] ?? "");
 
   let isPlaying = false;
+  let pausedSentence = "";
   let wpm = 300; // words per minute
   let timer: ReturnType<typeof setInterval> | null = null;
 
@@ -61,6 +62,21 @@
   // drop scripts/styles just in case
   doc.querySelectorAll("script, style, nav").forEach((n) => n.remove());
   return normalizeWhitespace(doc.body?.textContent ?? "");
+  }
+
+  function getSentenceAround(index: number, words: string[]) {
+  let start = index;
+  let end = index;
+
+  while (start > 0 && !/[.!?]$/.test(words[start])) {
+    start--;
+  }
+
+  while (end < words.length - 1 && !/[.!?]$/.test(words[end])) {
+    end++;
+  }
+
+  return words.slice(start, end + 1).join(" ");
   }
 
   async function loadEpubFile(file: File): Promise<{ title: string | null; chapters: chapter[] }> {
@@ -239,6 +255,7 @@
 
   function pause() {
     isPlaying = false;
+    pausedSentence = getSentenceAround(index, words);
     if (timer) clearInterval(timer);
     timer = null;
   }
@@ -255,10 +272,14 @@
   }
   
   function getORPLetterRank(letterCount: number): number {
-  if (letterCount <= 1) return 0;
-  if (letterCount <= 3) return 0;
-  if (letterCount <= 5) return 1;
-  if (letterCount <= 9) return 2;
+  if (letterCount <= 2) return 0;
+  if (letterCount <= 4) return 1;
+  if (letterCount <= 6) return 2;
+  if (letterCount <= 8) return 3;
+  if (letterCount <= 10) return 4;
+  if (letterCount <= 12) return 5;
+  if (letterCount <= 14) return 6;
+  if (letterCount <= 16) return 7;
   return 3;
   }
   
@@ -287,13 +308,17 @@
 
 <main class="wrap">
   <section class="display" aria-live="polite" aria-label="RSVP word display">
-  {#key index}
-    <div class="word">
-      <span class="left">{parts.left}</span>
-      <span class="center">{parts.center}</span>
-      <span class="right">{parts.right}</span>
-    </div>
-  {/key}
+  {#if isPlaying}
+  <div class="word">
+    <span class="left">{parts.left}</span>
+    <span class="center">{parts.center}</span>
+    <span class="right">{parts.right}</span>
+  </div>
+  {:else}
+  <div class="sentence">
+    {pausedSentence}
+  </div>
+  {/if}
   </section>
 
   <section class="top-bar" aria-label="EPUB loader">
@@ -504,5 +529,14 @@
   border-radius: 10px;
   border: 1px solid rgba(0,0,0,0.18);
   background: white;
+  }
+
+  .sentence {
+  font-size: 1.6rem;
+  max-width: 600px;
+  margin: auto;
+  text-align: center;
+  line-height: 1.6;
+  padding: 20px;
   }
 </style>
