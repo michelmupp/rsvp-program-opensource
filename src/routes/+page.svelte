@@ -1,19 +1,31 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { browser } from "$app/environment";
+  import { crossfade } from "svelte/transition";
+  import { quintOut } from "svelte/easing";
 
-  let words = "Welcome to your EPUB RSVP reader. We will add EPUB upload next. Welcome to your EPUB RSVP reader. We will add EPUB upload next. Welcome to your EPUB RSVP reader. We will add EPUB upload next. Welcome to your EPUB RSVP reader. We will add EPUB upload next.".split(" ");
+  const [send, receive] = crossfade({
+  duration: 350,
+  easing: quintOut
+  });
+
+  let words = "Rapid serial visual presentation (RSVP) is a scientific method for studying the timing of vision. In RSVP, a sequence of stimuli is shown to an observer at one location in their visual field. The observer is instructed to report one of these stimuli - the target - which has a feature that differentiates it from the rest of the stream. For instance, observers may see a sequence of stimuli consisting of gray letters with the exception of one red letter. They are told to report the red letter. People make errors in this task in the form of reports of stimuli that occurred before or after the target. The position in time of the letter they report, relative to the target, is an estimate of the timing of visual selection on that trial.".split(" ");
   let index = 0;
   $: parts = splitWord(words[index] ?? "");
+  $: totalWords = words.length;
+  $: currentWordNumber = Math.min(index + 1, totalWords);
+  $: progressPct = totalWords > 0 ? (currentWordNumber / totalWords) * 100 : 0;
 
   let isPlaying = false;
-  let pausedSentence = "";
   let wpm = 300; // words per minute
   let timer: ReturnType<typeof setInterval> | null = null;
-
   let isLoadingEpub = false;
   let epubError: string | null = null;
   let bookTitle: string | null = null;
+  let isStarting = false;
+  const startDelayMs = 350; // "kleiner delay" (stell das gerne auf 250–600)
+  let startTimeout: ReturnType<typeof setTimeout> | null = null;
+  let startAnimKey = 0;  // damit wir die Start-Animation sauber "triggern"
 
   type Chapter = {
   idref: string;
@@ -64,19 +76,42 @@
   return normalizeWhitespace(doc.body?.textContent ?? "");
   }
 
-  function getSentenceAround(index: number, words: string[]) {
-  let start = index;
-  let end = index;
+  function getSentenceBounds(idx: number, words: string[]) {
+  let start = idx;
+  while (start > 0 && !/[.!?]$/.test(words[start - 1])) start--;
 
-  while (start > 0 && !/[.!?]$/.test(words[start])) {
-    start--;
+  let end = idx;
+  while (end < words.length - 1 && !/[.!?]$/.test(words[end])) end++;
+
+  return { start, end };
+  }
+  
+  function getThreeSentenceWindow(idx: number, words: string[]) {
+  const cur = getSentenceBounds(idx, words);
+
+  // previous sentence
+  let start = cur.start;
+  if (cur.start > 0) {
+    const prev = getSentenceBounds(cur.start - 1, words);
+    start = prev.start;
   }
 
-  while (end < words.length - 1 && !/[.!?]$/.test(words[end])) {
-    end++;
+  // next sentence
+  let end = cur.end;
+  if (cur.end < words.length - 1) {
+    const next = getSentenceBounds(cur.end + 1, words);
+    end = next.end;
   }
 
-  return words.slice(start, end + 1).join(" ");
+  return { start, end };
+  }
+
+  let pauseWindow:
+  | { start: number; end: number }
+  | null = null;
+  
+  $: if (!isPlaying) {
+  pauseWindow = getThreeSentenceWindow(index, words);
   }
 
   async function loadEpubFile(file: File): Promise<{ title: string | null; chapters: chapter[] }> {
@@ -245,19 +280,46 @@
   }
 
   function start() {
-    if (isPlaying) return;
+  // wenn schon läuft oder schon im Start-Delay ist: nichts tun
+  if (isPlaying || isStarting) return;
+
+  pauseWindow = null;
+
+  // falls noch irgendwas hängt
+  if (timer) clearInterval(timer);
+  timer = null;
+
+  // Start-Animation triggern (neu mounten)
+  startAnimKey += 1;
+
+  // Zwischenzustand aktivieren: Wort fliegt rein
+  isStarting = true;
+
+  // nach kleinem Delay erst wirklich starten
+  startTimeout = setTimeout(() => {
+    isStarting = false;
     isPlaying = true;
+
     timer = setInterval(() => {
       if (index < words.length - 1) index += 1;
       else pause();
     }, msPerWord());
+  }, startDelayMs);
   }
 
   function pause() {
-    isPlaying = false;
-    pausedSentence = getSentenceAround(index, words);
-    if (timer) clearInterval(timer);
-    timer = null;
+  // Start-Delay abbrechen (falls gerade im "Anflug")
+  if (startTimeout) clearTimeout(startTimeout);
+  startTimeout = null;
+  isStarting = false;
+
+  isPlaying = false;
+
+  if (timer) clearInterval(timer);
+  timer = null;
+
+  // Pausenfenster (3 Sätze) berechnen
+  pauseWindow = getThreeSentenceWindow(index, words);
   }
 
   function restart() {
@@ -265,21 +327,21 @@
     index = 0;
   }
 
-  // If user changes WPM while playing, restart interval immediately
-  $: if (isPlaying) {
-    pause();
-    start();
+  let lastWpm = wpm;
+  
+  $: if (isPlaying && !isStarting && wpm !== lastWpm) {
+  lastWpm = wpm;
+  if (timer) clearInterval(timer);
+  timer = setInterval(() => {
+    if (index < words.length - 1) index += 1;
+    else pause();
+  }, msPerWord());
   }
   
   function getORPLetterRank(letterCount: number): number {
-  if (letterCount <= 2) return 0;
-  if (letterCount <= 4) return 1;
-  if (letterCount <= 6) return 2;
-  if (letterCount <= 8) return 3;
-  if (letterCount <= 10) return 4;
-  if (letterCount <= 12) return 5;
-  if (letterCount <= 14) return 6;
-  if (letterCount <= 16) return 7;
+  if (letterCount <= 3) return 0;
+  if (letterCount <= 5) return 1;
+  if (letterCount <= 9) return 2;
   return 3;
   }
   
@@ -304,20 +366,60 @@
   };
   }
   onDestroy(() => pause());
-  </script>
+
+  
+  // Remaining time estimate (in seconds)
+  $: remainingWords = totalWords > 0 ? Math.max(0, totalWords - currentWordNumber) : 0;
+  $: remainingSeconds = wpm > 0 ? Math.ceil((remainingWords / wpm) * 60) : 0;
+
+  function formatTime(sec: number) {
+    const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+  }
+</script>
 
 <main class="wrap">
+  <div class="top-progress">
+    <div class="top-progress-fill" style={`width:${progressPct}%`}>
+    </div>
+  </div>
+  <div class="top-progress-meta">
+    <span>{currentWordNumber} / {totalWords}</span>
+    <span>{formatTime(remainingSeconds)} remaining</span>
+  </div>
   <section class="display" aria-live="polite" aria-label="RSVP word display">
-  {#if isPlaying}
-  <div class="word">
+  {#if isStarting}
+  <div class="word starting" in:receive={"rsvp-word"}>
     <span class="left">{parts.left}</span>
     <span class="center">{parts.center}</span>
     <span class="right">{parts.right}</span>
   </div>
+
+  {:else if isPlaying}
+    <div class="word">
+      <span class="left">{parts.left}</span>
+      <span class="center">{parts.center}</span>
+      <span class="right">{parts.right}</span>
+    </div>
+
   {:else}
-  <div class="sentence">
-    {pausedSentence}
-  </div>
+  {#if pauseWindow}
+    <div class="sentence paused-view">
+      {#each words.slice(pauseWindow.start, pauseWindow.end + 1) as word, i}
+        {@const absoluteIndex = pauseWindow.start + i}
+        {#if absoluteIndex === index}
+          <span class="pause-word current-word" out:send={"rsvp-word"}>
+            {word + " "}
+          </span>
+        {:else}
+          <span class="pause-word">
+            {word + " "}
+          </span>
+        {/if}
+      {/each}
+    </div>
+  {/if}
   {/if}
   </section>
 
@@ -373,7 +475,7 @@
 
   <section class="controls" aria-label="Playback controls">
     <button on:click={restart}>Restart</button>
-    {#if isPlaying}
+    {#if isPlaying || isStarting}
       <button on:click={pause}>Pause</button>
     {:else}
       <button on:click={start}>Play</button>
@@ -401,10 +503,11 @@
   .wrap {
     min-height: 100vh;
     display: grid;
-    grid-template-rows: 1fr auto auto;
-    gap: 16px;
+    grid-template-rows: auto 1fr auto ;
+    gap: 8px;
     padding: 24px;
     box-sizing: border-box;
+    padding-top: 6px; /* Platz für Meta + Bar */
   }
 
   .top-bar {
@@ -538,5 +641,58 @@
   text-align: center;
   line-height: 1.6;
   padding: 20px;
+  }
+
+  .paused-view {
+  font-size: 1.6rem;
+  max-width: 700px;
+  margin: auto;
+  text-align: center;
+  line-height: 1.8;
+  color: #8a8a8a;
+  }
+  
+  .pause-word {
+  color: #8a8a8a; /* alles grau */
+  }
+  
+  .current-word {
+  color: #000000; /* aktuelles Wort weiß */
+  font-weight: 700;
+  }
+
+  .word.starting {
+  will-change: transform, opacity;
+  }
+
+  .top-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 20px;
+  background: #8a8a8a;
+  z-index: 9999;
+  pointer-events: none;
+  }
+
+  .top-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.95);
+  transition: width 120ms linear;
+  }
+
+  .top-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 12px 0 12px;
+
+  font-size: 1rem;        /* größer */
+  font-weight: 700;       /* wie .value */
+  font-variant-numeric: tabular-nums;
+  opacity: 1;
+
+  pointer-events: none;
   }
 </style>
