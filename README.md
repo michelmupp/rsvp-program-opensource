@@ -1,7 +1,7 @@
 # Preamble
 
 I created this project without knowing how to do anything, so I relied pretty much entirely on ChatGPT 5.2 to write the code, forgive me if it's inefficient:) 
-It's basically a SVELTE Based Rapid Serial Visual Presentation (RSVP) reader for speed reading with EPUB support.
+It's basically a SVELTE based reader using Rapid Serial Visual Presentation (RSVP) to increase reading speed with EPUB support.
 
 # Try the website
 
