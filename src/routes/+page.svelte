@@ -1,8 +1,10 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { browser } from "$app/environment";
   import { crossfade } from "svelte/transition";
   import { quintOut } from "svelte/easing";
+
+  const SAVE_KEY = "rsvp_state_v1";
 
   const [send, receive] = crossfade({
   duration: 350,
@@ -10,7 +12,6 @@
   });
 
   let words = "Rapid serial visual presentation (RSVP) is a scientific method for studying the timing of vision. In RSVP, a sequence of stimuli is shown to an observer at one location in their visual field. The observer is instructed to report one of these stimuli - the target - which has a feature that differentiates it from the rest of the stream. For instance, observers may see a sequence of stimuli consisting of gray letters with the exception of one red letter. They are told to report the red letter. People make errors in this task in the form of reports of stimuli that occurred before or after the target. The position in time of the letter they report, relative to the target, is an estimate of the timing of visual selection on that trial.".split(" ");
-  let index = 0;
   $: parts = splitWord(words[index] ?? "");
   $: totalWords = words.length;
   $: currentWordNumber = Math.min(index + 1, totalWords);
@@ -18,6 +19,10 @@
 
   let isPlaying = false;
   let wpm = 300; // words per minute
+  let selectedChapterIndex = 0;
+  let skipFrontMatter = true; // user can toggle
+  let index = 0;
+  let currentBookId: string | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
   let isLoadingEpub = false;
   let epubError: string | null = null;
@@ -26,18 +31,62 @@
   const startDelayMs = 350; // "kleiner delay" (stell das gerne auf 250–600)
   let startTimeout: ReturnType<typeof setTimeout> | null = null;
   let startAnimKey = 0;  // damit wir die Start-Animation sauber "triggern"
+  let hasInitialized = false;
 
   type Chapter = {
-  idref: string;
-  href: string;
-  title: string;
-  text: string;
-  words: string[];
-  skip: boolean;
+    idref: string;
+    href: string;
+    title: string;
+    text: string;
+    words: string[];
+    skip: boolean;
   };
+
   let chapters: Chapter[] = [];
-  let selectedChapterIndex = 0;
-  let skipFrontMatter = true; // user can toggle
+
+  type SavedState = {
+    bookId: string;
+    wpm: number;
+    skipFrontMatter: boolean;
+    chapterIndex: number;
+    wordIndex: number;
+  };
+
+  onMount(() => {
+  if (!browser) return;
+
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return;
+
+    const saved = JSON.parse(raw) as Partial<SavedState>;
+
+    if (typeof saved.wpm === "number") wpm = saved.wpm;
+    if (typeof saved.skipFrontMatter === "boolean") skipFrontMatter = saved.skipFrontMatter;
+
+    // Only restore chapter/word after an EPUB is loaded (because chapters[] doesn't exist yet)
+    if (
+    typeof saved.bookId === "string" &&
+    typeof saved.chapterIndex === "number" &&
+    typeof saved.wordIndex === "number"
+  ) {
+    pendingRestore = {
+      chapterIndex: saved.chapterIndex,
+      wordIndex: saved.wordIndex,
+      bookId: saved.bookId
+    };
+  }
+  } catch {
+    // ignore broken JSON
+  }
+  hasInitialized = true;
+  });
+
+  let pendingRestore: { 
+    chapterIndex: number; 
+    wordIndex: number;
+    bookId: string; 
+  } | null = null;
 
   $: if (chapters.length > 0) {
   const chap = chapters[selectedChapterIndex];
@@ -214,6 +263,7 @@
   const input = e.currentTarget as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
+  currentBookId = `${file.name}-${file.size}`;
 
   epubError = null;
   isLoadingEpub = true;
@@ -232,8 +282,24 @@
   selectedChapterIndex = 0;
   }
   
-  words = chapters[selectedChapterIndex].words;
-  restart(); // resets index + pauses
+  if (pendingRestore && currentBookId && pendingRestore.bookId === currentBookId) {
+    const chap = Math.max(0, Math.min(pendingRestore.chapterIndex, chapters.length - 1));
+    selectedChapterIndex = chap;
+
+    const wi = Math.max(
+      0,
+      Math.min(pendingRestore.wordIndex, chapters[chap].words.length - 1)
+    );
+
+    pause();
+    index = wi;
+    pauseWindow = getThreeSentenceWindow(index, chapters[chap].words);
+
+    pendingRestore = null;
+  } else {
+    selectedChapterIndex = selectedChapterIndex; // keep chosen start
+    restart();
+  }
   } catch (err: any) {
     epubError = err?.message ?? "Failed to load EPUB";
   } finally {
@@ -371,11 +437,24 @@
   // Remaining time estimate (in seconds)
   $: remainingWords = totalWords > 0 ? Math.max(0, totalWords - currentWordNumber) : 0;
   $: remainingSeconds = wpm > 0 ? Math.ceil((remainingWords / wpm) * 60) : 0;
+  $: if (browser && hasInitialized) {
+    const state: Partial<SavedState> = {
+      wpm,
+      skipFrontMatter
+    };
 
+    if (currentBookId) {
+      state.bookId = currentBookId;
+      state.chapterIndex = selectedChapterIndex;
+      state.wordIndex = index;
+    }
+
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  }
   function formatTime(sec: number) {
     const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
+    const s = sec % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
   }
 </script>
 
