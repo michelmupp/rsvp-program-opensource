@@ -420,13 +420,23 @@
     index = 0;
   }
 
-  function back100() {
-    // stop playback and jump back
+  function backSentence() {
     pause();
 
-    index = Math.max(0, index - 100);
+    if (!words.length) return;
 
-    // refresh pause window immediately
+    // Get current sentence bounds
+    const current = getSentenceBounds(index, words);
+
+    // If already at first sentence, go to start
+    if (current.start === 0) {
+      index = 0;
+    } else {
+      // Get previous sentence bounds
+      const previous = getSentenceBounds(current.start - 1, words);
+      index = previous.start;
+    }
+
     pauseWindow = getThreeSentenceWindow(index, words);
   }
 
@@ -595,9 +605,9 @@
       <button on:click={start}>Play</button>
     {/if}
 
-    <button on:click={back100} disabled={index === 0}>
-      Back
-    </button>
+    <button on:click={backSentence} disabled={index === 0}>
+  Back
+</button>
   </section>
 
   <button class="modeToggle" on:click={() => (nightMode = !nightMode)}>
