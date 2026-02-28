@@ -415,6 +415,28 @@
   pauseWindow = getThreeSentenceWindow(index, words);
   }
 
+  let holdActive = false;
+
+  function holdStart(e: Event) {
+    // Prevent iOS text selection / context menu / scroll gestures from “stealing” the press
+    e.preventDefault();
+
+    holdActive = true;
+
+    // If you’re already playing, do nothing
+    if (isPlaying || isStarting) return;
+
+    start();
+  }
+
+  function holdEnd() {
+    if (!holdActive) return;
+    holdActive = false;
+
+    // Only pause if we are actually playing/starting
+    if (isPlaying || isStarting) pause();
+  }
+
   function restart() {
     pause();
     index = 0;
@@ -511,7 +533,15 @@
     <span>{currentWordNumber} / {totalWords}</span>
     <span>{formatTime(remainingSeconds)} remaining</span>
   </div>
-  <section class="display" aria-live="polite" aria-label="RSVP word display">
+  <section class="display" 
+  aria-live="polite" 
+  aria-label="RSVP word display"
+  on:mousedown={holdStart}
+  on:mouseup={holdEnd}
+  on:mouseleave={holdEnd}
+  on:touchstart={holdStart}
+  on:touchend={holdEnd}
+  on:touchcancel={holdEnd}>
   {#if isStarting}
   <div class="word starting" in:receive={"rsvp-word"}>
     <span class="left">{parts.left}</span>
@@ -725,6 +755,10 @@
     border-radius: 16px;
     border: 1px solid var(--border);
     background: var(--panel);
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation; /* allows taps/presses without weird delays */
   }
 
   .word {
