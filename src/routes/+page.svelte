@@ -33,6 +33,33 @@
   let startAnimKey = 0;  // damit wir die Start-Animation sauber "triggern"
   let hasInitialized = false;
 
+  let nightMode = false;
+
+  // safe localStorage helpers (recommended)
+  function safeLoad(key: string): string | null {
+    try { return localStorage.getItem(key); } catch { return null; }
+  }
+  function safeSave(key: string, value: string) {
+    try { localStorage.setItem(key, value); } catch {}
+  }
+
+  onMount(() => {
+    if (!browser) return;
+
+    // 1) saved preference wins
+    const saved = safeLoad("rsvp_night_mode");
+    if (saved === "1") nightMode = true;
+    else if (saved === "0") nightMode = false;
+    else {
+      // 2) otherwise use system preference
+      nightMode = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
+    }
+  });
+
+  $: if (browser) {
+    safeSave("rsvp_night_mode", nightMode ? "1" : "0");
+  }
+
   type Chapter = {
     idref: string;
     href: string;
@@ -465,7 +492,7 @@
   }
 </script>
 
-<main class="wrap">
+<main class="wrap" class:dark={nightMode}>
   <div class="top-progress">
     <div class="top-progress-fill" style={`width:${progressPct}%`}>
     </div>
@@ -573,6 +600,10 @@
     </button>
   </section>
 
+  <button class="modeToggle" on:click={() => (nightMode = !nightMode)}>
+    {nightMode ? "Day" : "Night"}
+  </button>
+
   <section class="bottom-bar" aria-label="Reading speed control">
     <div class="speed-row">
       <span class="label">Speed</span>
@@ -591,8 +622,49 @@
 </main>
 
 <style>
+  /* default (day) */
+  :global(.dark),
+  :global(:root) {
+    /* we’ll set day variables on :root below */
+  }
+
+  :global(:root) {
+    --bg: #ffffff;
+    --text: #111111;
+    --muted: #666666;
+    --panel: #f4f4f5;
+    --border: #e5e7eb;
+  }
+
+  /* night mode overrides */
+  :global(.dark) {
+    --bg: #0b0f17;
+    --text: #e7e9ee;
+    --muted: #a3a7b3;
+    --panel: #121826;
+    --border: #273043;
+  }
+
+  /* apply variables to your page */
+  :global(body) {
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  /* OPTIONAL: if you have containers/cards */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+  }
+
+  /* toggle button (keeps your normal button style unless you already style buttons) */
+  .modeToggle {
+    margin-left: 10px;
+  }
+
   .wrap {
-    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);min-height: 100vh;
     display: grid;
     grid-template-rows: auto 1fr auto ;
     gap: 8px;
@@ -619,8 +691,9 @@
   gap: 8px;
   padding: 10px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.18);
-  background: white;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
   cursor: pointer;
   user-select: none;
   }
@@ -640,7 +713,8 @@
     display: grid;
     place-items: center;
     border-radius: 16px;
-    border: 1px solid rgba(0,0,0,0.12);
+    border: 1px solid var(--border);
+    background: var(--panel);
   }
 
   .word {
@@ -667,8 +741,9 @@
   button {
     padding: 10px 14px;
     border-radius: 10px;
-    border: 1px solid rgba(0,0,0,0.18);
-    background: white;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
     cursor: pointer;
   }
 
@@ -677,8 +752,8 @@
     bottom: 0;
     padding: 14px 14px 18px;
     border-radius: 16px;
-    border: 1px solid rgba(0,0,0,0.12);
-    background: rgba(255,255,255,0.9);
+    border: 1px solid var(--border);
+    background: var(--panel);
     backdrop-filter: blur(8px);
   }
 
@@ -708,8 +783,9 @@
   align-items: center;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.12);
-  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
   }
   
   .select {
@@ -721,8 +797,9 @@
   select {
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.18);
-  background: white;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
   }
 
   .sentence {
@@ -740,15 +817,15 @@
   margin: auto;
   text-align: center;
   line-height: 1.8;
-  color: #8a8a8a;
+  color: var(--muted);
   }
   
   .pause-word {
-  color: #8a8a8a; /* alles grau */
+  color: var(--muted); /* alles grau */
   }
   
   .current-word {
-  color: #000000; /* aktuelles Wort weiß */
+  color: var(--text); /* aktuelles Wort weiß */
   font-weight: 700;
   }
 
