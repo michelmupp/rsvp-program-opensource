@@ -393,6 +393,16 @@
     index = 0;
   }
 
+  function back100() {
+    // stop playback and jump back
+    pause();
+
+    index = Math.max(0, index - 100);
+
+    // refresh pause window immediately
+    pauseWindow = getThreeSentenceWindow(index, words);
+  }
+
   let lastWpm = wpm;
   
   $: if (isPlaying && !isStarting && wpm !== lastWpm) {
@@ -551,11 +561,16 @@
 
   <section class="controls" aria-label="Playback controls">
     <button on:click={restart}>Restart</button>
+
     {#if isPlaying || isStarting}
       <button on:click={pause}>Pause</button>
     {:else}
       <button on:click={start}>Play</button>
     {/if}
+
+    <button on:click={back100} disabled={index === 0}>
+      Back
+    </button>
   </section>
 
   <section class="bottom-bar" aria-label="Reading speed control">
@@ -642,11 +657,11 @@
   .center { justify-self: center; color: #d40000; white-space: pre; }
   .right { justify-self: start; white-space: pre; }
   
-
   .controls {
     display: flex;
     justify-content: center;
-    gap: 12px;
+    gap: 14px; /* spacing between buttons */
+    align-items: center;
   }
 
   button {
