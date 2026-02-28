@@ -53,33 +53,33 @@
   };
 
   onMount(() => {
-  if (!browser) return;
+    if (!browser) return;
 
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return;
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as Partial<SavedState>;
 
-    const saved = JSON.parse(raw) as Partial<SavedState>;
+        if (typeof saved.wpm === "number") wpm = saved.wpm;
+        if (typeof saved.skipFrontMatter === "boolean") skipFrontMatter = saved.skipFrontMatter;
 
-    if (typeof saved.wpm === "number") wpm = saved.wpm;
-    if (typeof saved.skipFrontMatter === "boolean") skipFrontMatter = saved.skipFrontMatter;
-
-    // Only restore chapter/word after an EPUB is loaded (because chapters[] doesn't exist yet)
-    if (
-    typeof saved.bookId === "string" &&
-    typeof saved.chapterIndex === "number" &&
-    typeof saved.wordIndex === "number"
-  ) {
-    pendingRestore = {
-      chapterIndex: saved.chapterIndex,
-      wordIndex: saved.wordIndex,
-      bookId: saved.bookId
-    };
-  }
-  } catch {
-    // ignore broken JSON
-  }
-  hasInitialized = true;
+        if (
+          typeof saved.bookId === "string" &&
+          typeof saved.chapterIndex === "number" &&
+          typeof saved.wordIndex === "number"
+        ) {
+          pendingRestore = {
+            chapterIndex: saved.chapterIndex,
+            wordIndex: saved.wordIndex,
+            bookId: saved.bookId
+          };
+        }
+      }
+    } catch {
+      // ignore broken JSON
+    } finally {
+      hasInitialized = true; // ✅ always runs
+    }
   });
 
   let pendingRestore: { 
@@ -438,10 +438,7 @@
   $: remainingWords = totalWords > 0 ? Math.max(0, totalWords - currentWordNumber) : 0;
   $: remainingSeconds = wpm > 0 ? Math.ceil((remainingWords / wpm) * 60) : 0;
   $: if (browser && hasInitialized) {
-    const state: Partial<SavedState> = {
-      wpm,
-      skipFrontMatter
-    };
+    const state: Partial<SavedState> = { wpm, skipFrontMatter };
 
     if (currentBookId) {
       state.bookId = currentBookId;
