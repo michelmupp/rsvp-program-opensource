@@ -58,6 +58,7 @@
 
   $: if (browser) {
     safeSave("rsvp_night_mode", nightMode ? "1" : "0");
+    document.documentElement.classList.toggle("dark", nightMode);
   }
 
   type Chapter = {
@@ -368,51 +369,53 @@
   return normalizeWhitespace(h);
   }
 
-  function msPerWord() {
-    return Math.max(10, Math.round(60000 / wpm));
+  function msPerWord(word: string = "") {
+    const base = Math.max(10, Math.round(60000 / wpm));
+    if (/[.!?]$/.test(word)) return base * 2.5;
+    if (/[,;:\-—]$/.test(word)) return base * 1.5;
+    return base;
+  }
+
+  function scheduleNext() {
+    timer = setTimeout(() => {
+      if (index < words.length - 1) {
+        index += 1;
+        scheduleNext();
+      } else {
+        pause();
+      }
+    }, msPerWord(words[index]));
   }
 
   function start() {
-  // wenn schon läuft oder schon im Start-Delay ist: nichts tun
-  if (isPlaying || isStarting) return;
+    if (isPlaying || isStarting) return;
 
-  pauseWindow = null;
+    pauseWindow = null;
 
-  // falls noch irgendwas hängt
-  if (timer) clearInterval(timer);
-  timer = null;
+    if (timer) clearTimeout(timer);
+    timer = null;
 
-  // Start-Animation triggern (neu mounten)
-  startAnimKey += 1;
+    startAnimKey += 1;
+    isStarting = true;
 
-  // Zwischenzustand aktivieren: Wort fliegt rein
-  isStarting = true;
-
-  // nach kleinem Delay erst wirklich starten
-  startTimeout = setTimeout(() => {
-    isStarting = false;
-    isPlaying = true;
-
-    timer = setInterval(() => {
-      if (index < words.length - 1) index += 1;
-      else pause();
-    }, msPerWord());
-  }, startDelayMs);
+    startTimeout = setTimeout(() => {
+      isStarting = false;
+      isPlaying = true;
+      scheduleNext();
+    }, startDelayMs);
   }
 
   function pause() {
-  // Start-Delay abbrechen (falls gerade im "Anflug")
-  if (startTimeout) clearTimeout(startTimeout);
-  startTimeout = null;
-  isStarting = false;
+    if (startTimeout) clearTimeout(startTimeout);
+    startTimeout = null;
+    isStarting = false;
 
-  isPlaying = false;
+    isPlaying = false;
 
-  if (timer) clearInterval(timer);
-  timer = null;
+    if (timer) clearTimeout(timer);
+    timer = null;
 
-  // Pausenfenster (3 Sätze) berechnen
-  pauseWindow = getThreeSentenceWindow(index, words);
+    pauseWindow = getThreeSentenceWindow(index, words);
   }
 
   let holdActive = false;
@@ -465,12 +468,7 @@
   let lastWpm = wpm;
   
   $: if (isPlaying && !isStarting && wpm !== lastWpm) {
-  lastWpm = wpm;
-  if (timer) clearInterval(timer);
-  timer = setInterval(() => {
-    if (index < words.length - 1) index += 1;
-    else pause();
-  }, msPerWord());
+    lastWpm = wpm;
   }
   
   function getORPLetterRank(letterCount: number): number {
@@ -676,6 +674,11 @@
     --border: #e5e7eb;
   }
 
+  :global(html), :global(body) {
+    background: var(--bg);
+    transition: background 0.2s;
+  }
+
   /* night mode overrides */
   :global(.dark) {
     --bg: #0b0f17;
@@ -683,6 +686,10 @@
     --muted: #a3a7b3;
     --panel: #121826;
     --border: #273043;
+  }
+
+  :global(html.dark), :global(body.dark) {
+    background: #0b0f17;
   }
 
   /* apply variables to your page */
@@ -758,7 +765,7 @@
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
-    touch-action: manipulation; /* allows taps/presses without weird delays */
+    touch-action: manipulation;
   }
 
   .word {
@@ -862,6 +869,9 @@
   text-align: center;
   line-height: 1.8;
   color: var(--muted);
+  overflow-y: auto;
+  max-height: 35vh;
+  padding: 12px;
   }
   
   .pause-word {
@@ -906,5 +916,12 @@
   opacity: 1;
 
   pointer-events: none;
+  }
+
+  @media (max-width: 430px) {
+    .paused-view {
+      font-size: 1.1rem;
+      line-height: 1.5;
+    }
   }
 </style>
