@@ -18,6 +18,26 @@
         hourRotations = Math.floor(s.breakMinutes / 12);
       }
     } catch {}
+
+    try {
+      const savedEndTime = localStorage.getItem('pomodoro-endtime');
+      const savedPhase = localStorage.getItem('pomodoro-phase') as 'work' | 'break' | null;
+      if (savedEndTime && savedPhase) {
+        const remaining = Math.floor((Number(savedEndTime) - Date.now()) / 1000);
+        if (remaining > 0) {
+          phase = savedPhase;
+          secondsLeft = remaining;
+          interval = setInterval(tick, 1000);
+        } else {
+          sendNotification(
+            savedPhase === 'work' ? '🍅 Fokuszeit vorbei!' : '☕ Pause vorbei!',
+            savedPhase === 'work' ? 'Zeit für eine Pause!' : 'Bereit für die nächste Session?'
+          );
+          localStorage.removeItem('pomodoro-endtime');
+          localStorage.removeItem('pomodoro-phase');
+        }
+      }
+    } catch {}
   });
   let isDraggingMinute = false;
   let isDraggingHour = false;
@@ -131,8 +151,11 @@
   function startTimer() {
     requestNotificationPermission();
     if (phase === 'paused') {
-      // Resume
       phase = pausedPhase;
+      // Neue Endzeit berechnen basierend auf verbleibender Zeit
+      const endTime = Date.now() + secondsLeft * 1000;
+      localStorage.setItem('pomodoro-endtime', String(endTime));
+      localStorage.setItem('pomodoro-phase', phase);
       interval = setInterval(tick, 1000);
       return;
     }
@@ -142,7 +165,9 @@
     }
     phase = 'work';
     secondsLeft = workMinutes * 60;
-    // Session-Startzeit merken
+    const endTime = Date.now() + secondsLeft * 1000;
+    localStorage.setItem('pomodoro-endtime', String(endTime));
+    localStorage.setItem('pomodoro-phase', 'work');
     const now = new Date();
     const sessionStart = {
       date: now.toISOString().slice(0, 10),
@@ -171,6 +196,8 @@
     secondsLeft = 0;
     minuteRotations = 0;
     hourRotations = 0;
+    localStorage.removeItem('pomodoro-endtime');
+    localStorage.removeItem('pomodoro-phase');
   }
 
   function tick() {
