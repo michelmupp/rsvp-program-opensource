@@ -68,6 +68,33 @@
       </button>
     </div>
 
+    <!-- Wheelit -->
+    <div class="app-card">
+      <div class="app-header">
+        <span class="app-icon">🎡</span>
+        <div>
+          <h2>Wheelit</h2>
+          <p class="app-sub">Fair entscheiden, zufällig bestimmen</p>
+        </div>
+      </div>
+      <div class="features">
+        <div class="feature">
+          <span>🌀</span>
+          <p>Rad drehen & loslassen</p>
+        </div>
+        <div class="feature">
+          <span>👥</span>
+          <p>Spieler anpassen</p>
+        </div>
+        <div class="feature">
+          <span>🎉</span>
+          <p>Konfetti-Gewinner</p>
+        </div>
+      </div>
+      <button class="cta pomodoro" on:click={() => goto('/wheelit')}>
+        Rad drehen
+      </button>
+    </div>
   </div>
 </main>
 
