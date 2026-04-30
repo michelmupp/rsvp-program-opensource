@@ -974,7 +974,7 @@
 
 .back-home {
   background: var(--panel);
-  border: none;
+  border: 1px solid transparent !important;
   border-radius: 14px;
   width: 44px;
   height: 44px;
@@ -987,6 +987,7 @@
   padding: 0;
   margin-right: 10px;
   vertical-align: middle;
+  opacity: 1 !important;
 }
 .back-home:hover {
   transform: translateY(-2px);
