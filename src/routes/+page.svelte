@@ -63,7 +63,7 @@
           <p>Session-Statistiken</p>
         </div>
       </div>
-      <button class="cta pomodoro" on:click={() => goto('/pomodoro')}>
+      <button class="cta" on:click={() => goto('/pomodoro')}>
         Start Timer
       </button>
     </div>
@@ -91,7 +91,7 @@
           <p>Konfetti-Gewinner</p>
         </div>
       </div>
-      <button class="cta pomodoro" on:click={() => goto('/wheelit')}>
+      <button class="cta" on:click={() => goto('/wheelit')}>
         Rad drehen
       </button>
     </div>

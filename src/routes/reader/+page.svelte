@@ -530,7 +530,7 @@
   </div>
   <div class="top-progress-meta">
     <span class="meta-left">
-      <button class="back-home" on:click={() => goto('/')} aria-label="Home">
+      <button class="nav-btn" on:click={() => goto('/')} aria-label="Home" style="pointer-events:all;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M19 12H5M12 5l-7 7 7 7"/>
         </svg>
@@ -972,7 +972,7 @@
     .paused-view { font-size: 1.1rem; line-height: 1.5; }
   }
 
-.back-home {
+.nav-btn {
   background: var(--panel);
   border: none;
   border-radius: 14px;
@@ -990,12 +990,12 @@
   opacity: 1;
   font-size: 0;
 }
-.back-home:hover {
+.nav-btn:hover {
   transform: translateY(-2px) !important;
   box-shadow: 0 6px 20px rgba(0,0,0,0.12) !important;
   color: var(--accent);
 }
-.back-home svg {
+.nav-btn svg {
   width: 20px;
   height: 20px;
 }
