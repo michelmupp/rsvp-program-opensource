@@ -258,7 +258,7 @@ function sendNotification(title: string, body: string) {
         saveStats();
         saveHistory(workMinutes, 0);
         sendNotification('🍅 Fokuszeit vorbei!', 'Zeit für eine Pause – gut gemacht!');
-        const breakEndTime = Date.now() + breakMinutes * 1000;
+        const breakEndTime = Date.now() + breakMinutes *60 * 1000;
         localStorage.setItem('pomodoro-endtime', String(breakEndTime));
         localStorage.setItem('pomodoro-phase', 'break');
         fetch(`${SERVER_URL}/schedule`, {
