@@ -44,13 +44,15 @@
         }
       }
     } catch {}
+  });
+
   let isDraggingMinute = false;
   let isDraggingHour = false;
 
   // Timer state
   type Phase = 'idle' | 'work' | 'break' | 'paused';
   let phase: Phase = 'idle';
-  let pausedPhase: 'work' | 'break' = 'work'; // which phase was active before pause
+  let pausedPhase: 'work' | 'break' = 'work';
   let secondsLeft = 0;
   let interval: ReturnType<typeof setInterval> | null = null;
 
