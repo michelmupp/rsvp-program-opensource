@@ -4,6 +4,16 @@
 
   const SERVER_URL = 'https://rsvp-program-opensource-production.up.railway.app';
 
+  // Eindeutige Geräte-ID
+  function getDeviceId(): string {
+    let id = localStorage.getItem('pomodoro-device-id');
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem('pomodoro-device-id', id);
+    }
+    return id;
+  }
+
   // Clock state
   let workMinutes = 25;
   let breakMinutes = 5;
@@ -69,32 +79,29 @@
   }
 
   async function requestNotificationPermission() {
-  if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
 
-  const permission = await Notification.requestPermission();
-  if (permission !== 'granted') return;
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
 
-  // Service Worker registrieren
-  const reg = await navigator.serviceWorker.register('/sw.js');
-  await navigator.serviceWorker.ready;
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
 
-  // VAPID Public Key vom Server holen
-  const res = await fetch(`${SERVER_URL}/vapid-public-key`);
-  const { key } = await res.json();
+    const res = await fetch(`${SERVER_URL}/vapid-public-key`);
+    const { key } = await res.json();
 
-  // Subscription erstellen
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: key,
-  });
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: key,
+    });
 
-  // Subscription an Server schicken
-  await fetch(`${SERVER_URL}/subscribe`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(sub),
-  });
-}
+    // deviceId mitsenden damit der Server Geräte auseinanderhalten kann
+    await fetch(`${SERVER_URL}/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...sub.toJSON(), deviceId: getDeviceId() }),
+    });
+  }
 
 function sendNotification(title: string, body: string) {
   // Lokal als Fallback wenn App offen ist
@@ -202,6 +209,7 @@ function sendNotification(title: string, body: string) {
       body: JSON.stringify({
         endsAt: Date.now() + secondsLeft * 1000,
         phase: 'work',
+        deviceId: getDeviceId(),
       }),
     }).catch(() => {});
     const endTime = Date.now() + secondsLeft * 1000;
@@ -240,6 +248,8 @@ function sendNotification(title: string, body: string) {
     // Server-Timer abbrechen
     fetch(`${SERVER_URL}/cancel`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId: getDeviceId() }),
     }).catch(() => {});
   }
 
@@ -264,7 +274,7 @@ function sendNotification(title: string, body: string) {
         fetch(`${SERVER_URL}/schedule`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ endsAt: breakEndTime, phase: 'break' }),
+          body: JSON.stringify({ endsAt: breakEndTime, phase: 'break', deviceId: getDeviceId() }),
         }).catch(() => {});
         phase = 'break';
         secondsLeft = breakMinutes * 60;

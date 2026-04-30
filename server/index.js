@@ -6,45 +6,47 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// VAPID Keys – wir generieren diese gleich
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 
 webpush.setVapidDetails(
-  'mailto:michel@keiffer.lu',  // ersetze das mit deiner echten Email
+  'mailto:michel@keiffer.lu',
   VAPID_PUBLIC_KEY,
   VAPID_PRIVATE_KEY
 );
 
-// Subscriptions im Speicher halten (reicht für eine Person)
-let subscription = null;
+// Multi-device: Map von deviceId -> subscription
+const subscriptions = new Map();
+
+// Pro-device Timer: Map von deviceId -> setTimeout handle
 const pendingTimers = new Map();
 
-// PWA schickt ihre Subscription hierher
+// PWA schickt ihre Subscription + deviceId hierher
 app.post('/subscribe', (req, res) => {
-  subscription = req.body;
+  const { deviceId, ...sub } = req.body;
+  if (!deviceId) return res.status(400).json({ error: 'deviceId fehlt' });
+  subscriptions.set(deviceId, sub);
+  console.log(`Device registriert: ${deviceId} (${subscriptions.size} total)`);
   res.json({ ok: true });
 });
 
-// PWA schickt Timer-Endzeit hierher
+// PWA schickt Timer-Endzeit + deviceId hierher
 app.post('/schedule', (req, res) => {
-  const { endsAt, phase, breakMinutes } = req.body;
-  // endsAt = Unix timestamp in ms
+  const { endsAt, phase, deviceId } = req.body;
+  if (!deviceId) return res.status(400).json({ error: 'deviceId fehlt' });
 
-  // Bestehende Timer löschen
-  for (const t of pendingTimers.values()) clearTimeout(t);
-  pendingTimers.clear();
-
-  if (!subscription) {
-    return res.status(400).json({ error: 'Keine Subscription vorhanden' });
+  // Bestehenden Timer für dieses Gerät löschen
+  if (pendingTimers.has(deviceId)) {
+    clearTimeout(pendingTimers.get(deviceId));
+    pendingTimers.delete(deviceId);
   }
+
+  const sub = subscriptions.get(deviceId);
+  if (!sub) return res.status(400).json({ error: 'Keine Subscription für dieses Gerät' });
 
   const delay = endsAt - Date.now();
-  if (delay <= 0) {
-    return res.json({ ok: true, note: 'Timer bereits abgelaufen' });
-  }
+  if (delay <= 0) return res.json({ ok: true, note: 'Timer bereits abgelaufen' });
 
-  // Timer planen
   const t = setTimeout(async () => {
     const isWork = phase === 'work';
     const payload = JSON.stringify({
@@ -52,21 +54,28 @@ app.post('/schedule', (req, res) => {
       body: isWork ? 'Zeit für eine Pause – gut gemacht!' : 'Bereit für die nächste Session?',
     });
     try {
-      await webpush.sendNotification(subscription, payload);
+      await webpush.sendNotification(sub, payload);
     } catch (err) {
-      console.error('Push fehlgeschlagen:', err);
+      console.error(`Push fehlgeschlagen für ${deviceId}:`, err.statusCode || err.message);
+      // Subscription ungültig → entfernen
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        subscriptions.delete(deviceId);
+      }
     }
-    pendingTimers.delete('current');
+    pendingTimers.delete(deviceId);
   }, delay);
 
-  pendingTimers.set('current', t);
+  pendingTimers.set(deviceId, t);
   res.json({ ok: true, delaySeconds: Math.round(delay / 1000) });
 });
 
-// Timer abbrechen (wenn User auf Stop drückt)
+// Timer abbrechen für ein bestimmtes Gerät
 app.post('/cancel', (req, res) => {
-  for (const t of pendingTimers.values()) clearTimeout(t);
-  pendingTimers.clear();
+  const { deviceId } = req.body;
+  if (deviceId && pendingTimers.has(deviceId)) {
+    clearTimeout(pendingTimers.get(deviceId));
+    pendingTimers.delete(deviceId);
+  }
   res.json({ ok: true });
 });
 
