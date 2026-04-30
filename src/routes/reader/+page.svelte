@@ -974,7 +974,7 @@
 
 .back-home {
   background: var(--panel);
-  border: 1px solid transparent !important;
+  border: none;
   border-radius: 14px;
   width: 44px;
   height: 44px;
@@ -987,11 +987,12 @@
   padding: 0;
   margin-right: 10px;
   vertical-align: middle;
-  opacity: 1 !important;
+  opacity: 1;
+  font-size: 0;
 }
 .back-home:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12) !important;
   color: var(--accent);
 }
 .back-home svg {
