@@ -2,6 +2,8 @@
   import { onDestroy, onMount } from 'svelte';
   import { goto } from '$app/navigation';
 
+  const SERVER_URL = 'https://rsvp-program-opensource-production.up.railway.app';
+
   // Clock state
   let workMinutes = 25;
   let breakMinutes = 5;
@@ -62,16 +64,39 @@
   }
 
   async function requestNotificationPermission() {
-    if ('Notification' in window) {
-      await Notification.requestPermission();
-    }
-  }
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
 
-  function sendNotification(title: string, body: string) {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, { body, icon: '/favicon.png' });
-    }
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') return;
+
+  // Service Worker registrieren
+  const reg = await navigator.serviceWorker.register('/sw.js');
+  await navigator.serviceWorker.ready;
+
+  // VAPID Public Key vom Server holen
+  const res = await fetch(`${SERVER_URL}/vapid-public-key`);
+  const { key } = await res.json();
+
+  // Subscription erstellen
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: key,
+  });
+
+  // Subscription an Server schicken
+  await fetch(`${SERVER_URL}/subscribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sub),
+  });
+}
+
+function sendNotification(title: string, body: string) {
+  // Lokal als Fallback wenn App offen ist
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '/favicon.png' });
   }
+}
 
   // SVG clock geometry
   const CX = 150, CY = 150, R = 130;
@@ -165,6 +190,15 @@
     }
     phase = 'work';
     secondsLeft = workMinutes * 60;
+    // Server informieren
+    fetch(`${SERVER_URL}/schedule`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        endsAt: Date.now() + secondsLeft * 1000,
+        phase: 'work',
+      }),
+    }).catch(() => {});
     const endTime = Date.now() + secondsLeft * 1000;
     localStorage.setItem('pomodoro-endtime', String(endTime));
     localStorage.setItem('pomodoro-phase', 'work');
@@ -198,6 +232,10 @@
     hourRotations = 0;
     localStorage.removeItem('pomodoro-endtime');
     localStorage.removeItem('pomodoro-phase');
+    // Server-Timer abbrechen
+    fetch(`${SERVER_URL}/cancel`, {
+      method: 'POST',
+    }).catch(() => {});
   }
 
   function tick() {
