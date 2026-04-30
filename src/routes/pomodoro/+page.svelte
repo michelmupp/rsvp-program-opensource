@@ -29,18 +29,21 @@
         if (remaining > 0) {
           phase = savedPhase;
           secondsLeft = remaining;
+          // Interval neu starten – zieht sich jetzt die korrekte secondsLeft
           interval = setInterval(tick, 1000);
         } else {
+          // Timer abgelaufen während App zu war
           sendNotification(
             savedPhase === 'work' ? '🍅 Fokuszeit vorbei!' : '☕ Pause vorbei!',
             savedPhase === 'work' ? 'Zeit für eine Pause!' : 'Bereit für die nächste Session?'
           );
           localStorage.removeItem('pomodoro-endtime');
           localStorage.removeItem('pomodoro-phase');
+          phase = 'idle';
+          secondsLeft = 0;
         }
       }
     } catch {}
-  });
   let isDraggingMinute = false;
   let isDraggingHour = false;
 
@@ -239,7 +242,13 @@ function sendNotification(title: string, body: string) {
   }
 
   function tick() {
-    secondsLeft--;
+    const savedEndTime = localStorage.getItem('pomodoro-endtime');
+    if (savedEndTime) {
+      secondsLeft = Math.max(0, Math.floor((Number(savedEndTime) - Date.now()) / 1000));
+    } else {
+      secondsLeft--;
+    }
+
     if (secondsLeft <= 0) {
       if (phase === 'work') {
         stats.sessions++;
@@ -247,6 +256,14 @@ function sendNotification(title: string, body: string) {
         saveStats();
         saveHistory(workMinutes, 0);
         sendNotification('🍅 Fokuszeit vorbei!', 'Zeit für eine Pause – gut gemacht!');
+        const breakEndTime = Date.now() + breakMinutes * 1000;
+        localStorage.setItem('pomodoro-endtime', String(breakEndTime));
+        localStorage.setItem('pomodoro-phase', 'break');
+        fetch(`${SERVER_URL}/schedule`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endsAt: breakEndTime, phase: 'break' }),
+        }).catch(() => {});
         phase = 'break';
         secondsLeft = breakMinutes * 60;
       } else {

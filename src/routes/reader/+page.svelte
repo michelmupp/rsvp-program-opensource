@@ -529,11 +529,15 @@
     </div>
   </div>
   <div class="top-progress-meta">
-  <span>
-    <button class="back-home" on:click={() => goto('/')}>←</button>
-    {currentWordNumber} / {totalWords}
-  </span>
-  <span>{formatTime(remainingSeconds)} remaining</span>
+    <span class="meta-left">
+      <button class="back-home" on:click={() => goto('/')} aria-label="Home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 5l-7 7 7 7"/>
+        </svg>
+      </button>
+      {currentWordNumber} / {totalWords}
+    </span>
+    <span>{formatTime(remainingSeconds)} remaining</span>
   </div>
   <section class="display" 
   aria-live="polite" 
@@ -969,9 +973,33 @@
   }
 
 .back-home {
-  padding: 2px 10px;
-  font-size: 0.85rem;
-  box-shadow: none;
-  margin-right: 8px;
+  background: var(--panel);
+  border: none;
+  border-radius: 14px;
+  width: 44px;
+  height: 44px;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  color: var(--muted);
+  transition: transform 0.15s, box-shadow 0.15s, color 0.15s;
+  padding: 0;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+.back-home:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  color: var(--accent);
+}
+.back-home svg {
+  width: 20px;
+  height: 20px;
+}
+.meta-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 </style>
