@@ -269,7 +269,8 @@
   const text = getTextFromHtml(html);
   if (!text) continue;
 
-  const titleGuess = pickChapterTitleFromHtml(html) || item.href;
+  const rawTitle = pickChapterTitleFromHtml(html) || item.href;
+const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
 
   const skip = looksLikeFrontMatter(titleGuess, item.href, text);
 
@@ -411,6 +412,9 @@
     startTimeout = null;
     isStarting = false;
 
+    const wordsRead = index - sessionStartIndex;
+    saveReadingWords(wordsRead);
+    sessionStartIndex = index;
     isPlaying = false;
 
     if (timer) clearTimeout(timer);
@@ -443,6 +447,7 @@
 
   function restart() {
     pause();
+    sessionStartIndex = 0;
     index = 0;
   }
 
@@ -501,6 +506,19 @@
   }
   onDestroy(() => pause());
 
+  let sessionStartIndex = 0;
+
+  function saveReadingWords(wordsRead: number) {
+    if (wordsRead <= 0) return;
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const log = JSON.parse(localStorage.getItem('reading-log') || '[]');
+      const existing = log.find((e: any) => e.date === today && e.source === 'rsvp');
+      if (existing) { existing.words += wordsRead; }
+      else { log.push({ date: today, words: wordsRead, source: 'rsvp' }); }
+      localStorage.setItem('reading-log', JSON.stringify(log));
+    } catch {}
+  }
   
   // Remaining time estimate (in seconds)
   $: remainingWords = totalWords > 0 ? Math.max(0, totalWords - currentWordNumber) : 0;
@@ -537,7 +555,12 @@
       </button>
       {currentWordNumber} / {totalWords}
     </span>
-    <span>{formatTime(remainingSeconds)} remaining</span>
+    <span class="meta-right">
+      {formatTime(remainingSeconds)} remaining
+      <button class="nav-btn" on:click={() => goto('/reader/stats')} aria-label="Statistiken" style="width:28px;height:28px;border-radius:10px;font-size:1rem;background:transparent;border:none;cursor:pointer;color:var(--muted);pointer-events:all;">
+        📖
+      </button>
+    </span>
   </div>
   <section class="display" 
   aria-live="polite" 
@@ -725,7 +748,7 @@
     height: 3px;
     background: var(--border);
     z-index: 9999;
-    pointer-events: none;
+    pointer-events: all;
   }
 
   .top-progress-fill {
