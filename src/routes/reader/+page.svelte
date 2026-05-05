@@ -557,7 +557,7 @@ const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
     </span>
     <span class="meta-right">
       {formatTime(remainingSeconds)} remaining
-      <button class="nav-btn" on:click={() => goto('/reader/stats')} aria-label="Statistiken" style="width:28px;height:28px;border-radius:10px;font-size:1rem;background:transparent;border:none;cursor:pointer;color:var(--muted);pointer-events:all;">
+      <button class="nav-btn" on:click={() => goto('/reader/stats')} aria-label="Statistiken" style="pointer-events:all; font-size:1.5rem; margin-left:8px;">
         📖
       </button>
     </span>
