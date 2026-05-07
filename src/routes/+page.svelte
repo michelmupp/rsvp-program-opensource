@@ -95,6 +95,34 @@
         Rad drehen
       </button>
     </div>
+
+    <!-- QR Generator -->
+    <div class="app-card">
+      <div class="app-header">
+        <span class="app-icon">⬛</span>
+        <div>
+          <h2>QR Generator</h2>
+          <p class="app-sub">Text oder URL als QR Code</p>
+        </div>
+      </div>
+      <div class="features">
+        <div class="feature">
+          <span>⌨️</span>
+          <p>Text oder URL eingeben</p>
+        </div>
+        <div class="feature">
+          <span>⚡</span>
+          <p>Sofort generiert</p>
+        </div>
+        <div class="feature">
+          <span>💾</span>
+          <p>Als PNG herunterladen</p>
+        </div>
+      </div>
+      <button class="cta" on:click={() => goto('/qr')}>
+        QR erstellen
+      </button>
+    </div>
   </div>
 </main>
 
