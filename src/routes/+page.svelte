@@ -57,7 +57,11 @@
     <!-- QR Generator -->
     <div class="app-card">
       <div class="app-header">
-        <span class="app-icon">⬛</span>
+        <span class="logo-icon">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+            <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm7-2h7v7h-7V3zm2 2v3h3V5h-3zM3 13h7v7H3v-7zm2 2v3h3v-3H5zm11 0h2v2h-2v-2zm-4-2h2v2h-2v-2zm2 2h2v2h-2v-2zm-2 2h2v2h-2v-2zm2 2h2v2h-2v-2zm2-2h2v2h-2v-2zm0-4h2v2h-2v-2zm2 2h2v2h-2v-2z"/>
+          </svg>
+        </span>
         <div>
           <h2>QR Generator</h2>
           <p class="app-sub">Text oder URL als QR Code</p>
@@ -284,4 +288,6 @@
   .cta.pomodoro:hover {
     box-shadow: 0 8px 28px var(--shadow);
   }
+
+  .logo-icon { font-size: 2.8rem; color: var(--text); }
 </style>

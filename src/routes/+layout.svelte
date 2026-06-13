@@ -29,11 +29,11 @@
   }
 
   const pages = [
-    { path: '/',         icon: '✦',  label: 'Home' },
-    { path: '/reader',   icon: '👁️', label: 'RSVP Reader' },
-    { path: '/pomodoro', icon: '🍅', label: 'Pomodoro Timer' },
-    { path: '/qr',       icon: '⬛', label: 'QR Generator' },
-    { path: '/wheelit',  icon: '🎡', label: 'Wheelit' },
+    { path: '/',         icon: '✦',  label: 'Home',           svg: false },
+    { path: '/reader',   icon: '👁️', label: 'RSVP Reader',    svg: false },
+    { path: '/qr',       icon: '',   label: 'QR Generator',   svg: true  },
+    { path: '/pomodoro', icon: '🍅', label: 'Pomodoro Timer', svg: false },
+    { path: '/wheelit',  icon: '🎡', label: 'Wheelit',        svg: false },
   ];
 </script>
 
@@ -60,7 +60,15 @@
     <p class="menu-title">Glimpse</p>
     {#each pages as page}
       <button class="menu-item" onclick={() => navigate(page.path)}>
-        <span class="menu-icon">{page.icon}</span>
+        <span class="menu-icon">
+		{#if page.svg}
+			<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+			<path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm7-2h7v7h-7V3zm2 2v3h3V5h-3zM3 13h7v7H3v-7zm2 2v3h3v-3H5zm11 0h2v2h-2v-2zm-4-2h2v2h-2v-2zm2 2h2v2h-2v-2zm-2 2h2v2h-2v-2zm2 2h2v2h-2v-2zm2-2h2v2h-2v-2zm0-4h2v2h-2v-2zm2 2h2v2h-2v-2z"/>
+			</svg>
+		{:else}
+			{page.icon}
+		{/if}
+		</span>
         <span>{page.label}</span>
       </button>
     {/each}

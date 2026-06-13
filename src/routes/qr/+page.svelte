@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
   import { onMount, afterUpdate } from 'svelte';
 
   let input = '';
@@ -73,17 +72,13 @@
 </script>
 
 <main>
-  <nav>
-    <button class="nav-btn" on:click={() => goto('/')} aria-label="Zurück">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M19 12H5M12 5l-7 7 7 7"/>
-      </svg>
-    </button>
-  </nav>
-
   <div class="hero">
     <div class="logo">
-      <span class="logo-icon">⬛</span>
+      <span class="logo-icon">
+        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+          <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm7-2h7v7h-7V3zm2 2v3h3V5h-3zM3 13h7v7H3v-7zm2 2v3h3v-3H5zm11 0h2v2h-2v-2zm-4-2h2v2h-2v-2zm2 2h2v2h-2v-2zm-2 2h2v2h-2v-2zm2 2h2v2h-2v-2zm2-2h2v2h-2v-2zm0-4h2v2h-2v-2zm2 2h2v2h-2v-2z"/>
+        </svg>
+      </span>
       <h1>QR Generator</h1>
       <p class="tagline">Text oder URL in QR Code umwandeln</p>
     </div>
@@ -152,55 +147,47 @@
 </main>
 
 <style>
-  :global(*, *::before, *::after) { box-sizing: border-box; margin: 0; padding: 0; }
-  :global(body) { background: #fdf8f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-
   main { min-height: 100vh; display: grid; place-items: center; padding: 72px 24px 48px; }
-
-  nav { position: fixed; top: 20px; left: 24px; z-index: 10; }
-  .nav-btn { background: white; border: none; border-radius: 14px; width: 44px; height: 44px; display: grid; place-items: center; cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,0.08); color: #555; transition: transform 0.15s, box-shadow 0.15s, color 0.15s; }
-  .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); color: #e8734a; }
-  .nav-btn svg { width: 20px; height: 20px; }
 
   .hero { display: flex; flex-direction: column; align-items: center; gap: 24px; max-width: 400px; width: 100%; text-align: center; }
 
   .logo { display: flex; flex-direction: column; align-items: center; gap: 8px; }
   .logo-icon { font-size: 2.8rem; }
-  h1 { font-size: 2.8rem; font-weight: 800; color: #1a1a1a; letter-spacing: -1px; }
-  .tagline { font-size: 0.92rem; color: #aaa; font-weight: 500; }
+  h1 { font-size: 2.8rem; font-weight: 800; color: var(--text); letter-spacing: -1px; }
+  .tagline { font-size: 0.92rem; color: var(--muted); font-weight: 500; }
 
   /* Input */
-  .input-box { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); width: 100%; display: flex; flex-direction: column; gap: 10px; }
-  .section-label { font-size: 0.78rem; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: 0.7px; text-align: left; }
+  .input-box { background: var(--panel); border-radius: 20px; padding: 20px; box-shadow: 0 2px 12px var(--shadow); width: 100%; display: flex; flex-direction: column; gap: 10px; }
+  .section-label { font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; text-align: left; }
 
   .input-wrap { position: relative; }
   textarea {
-    width: 100%; border: 2px solid #f0ebe5; border-radius: 14px;
+    width: 100%; border: 2px solid var(--border); border-radius: 14px;
     padding: 14px 40px 14px 16px; font-size: 0.95rem; font-weight: 500;
-    color: #1a1a1a; background: #fdf8f4; outline: none;
+    color: var(--text); background: var(--panel-inner); outline: none;
     resize: none; font-family: inherit; line-height: 1.5;
     transition: border-color 0.15s;
   }
-  textarea:focus { border-color: #e8734a; }
-  textarea::placeholder { color: #ccc; }
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--muted); }
 
-  .clear-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #ccc; font-size: 0.85rem; cursor: pointer; padding: 4px 6px; border-radius: 8px; transition: color 0.15s; }
-  .clear-btn:hover { color: #e8734a; }
+  .clear-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--muted); font-size: 0.85rem; cursor: pointer; padding: 4px 6px; border-radius: 8px; transition: color 0.15s; }
+  .clear-btn:hover { color: var(--accent); }
 
-  .char-count { font-size: 0.75rem; color: #ccc; text-align: right; }
+  .char-count { font-size: 0.75rem; color: var(--muted); text-align: right; }
 
   /* QR box */
-  .qr-box { background: white; border-radius: 24px; padding: 28px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; transition: box-shadow 0.3s; }
-  .qr-box.has-qr { box-shadow: 0 8px 40px rgba(232,115,74,0.12); }
+  .qr-box { background: var(--panel); border-radius: 24px; padding: 28px; box-shadow: 0 2px 12px var(--shadow); width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; transition: box-shadow 0.3s; }
+  .qr-box.has-qr { box-shadow: 0 8px 40px var(--accent-shadow); }
 
   .qr-container { display: flex; align-items: center; justify-content: center; }
-  :global(#qr-container img) { display: none; } /* hide img, show canvas only */
+  :global(#qr-container img) { display: none; }
   :global(#qr-container canvas) { border-radius: 12px; }
 
   /* Placeholder */
   .qr-placeholder { display: flex; flex-direction: column; align-items: center; gap: 20px; }
   .placeholder-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 80px; }
-  .placeholder-cell { width: 22px; height: 22px; border-radius: 4px; background: #f0ebe5; animation: pulse 1.8s ease-in-out infinite; }
+  .placeholder-cell { width: 22px; height: 22px; border-radius: 4px; background: var(--border); animation: pulse 1.8s ease-in-out infinite; }
   .placeholder-cell:nth-child(2) { animation-delay: 0.1s; }
   .placeholder-cell:nth-child(3) { animation-delay: 0.2s; }
   .placeholder-cell:nth-child(4) { animation-delay: 0.3s; }
@@ -215,13 +202,15 @@
     50% { opacity: 1; }
   }
 
-  .placeholder-text { font-size: 0.85rem; color: #ccc; font-weight: 500; }
+  .placeholder-text { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
 
   /* Actions */
   .actions { display: flex; gap: 12px; width: 100%; }
   .action-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border-radius: 14px; border: none; font-size: 0.95rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: transform 0.15s, box-shadow 0.15s; }
-  .action-btn.primary { background: #e8734a; color: white; box-shadow: 0 4px 16px rgba(232,115,74,0.3); }
-  .action-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(232,115,74,0.4); }
-  .action-btn.secondary { background: white; color: #1a1a1a; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
-  .action-btn.secondary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+  .action-btn.primary { background: var(--accent); color: white; box-shadow: 0 4px 16px var(--accent-shadow); }
+  .action-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--accent-shadow); }
+  .action-btn.secondary { background: var(--panel); color: var(--text); box-shadow: 0 2px 12px var(--shadow); }
+  .action-btn.secondary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--shadow); }
+
+  .logo-icon { font-size: 2.8rem; color: var(--text); }
 </style>
