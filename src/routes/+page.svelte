@@ -1,19 +1,5 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { browser } from '$app/environment';
-  import { onMount } from 'svelte';
-
-  let dark = false;
-
-  onMount(() => {
-    dark = document.documentElement.classList.contains('dark');
-  });
-
-  function toggleTheme() {
-    dark = !dark;
-    document.documentElement.classList.toggle('dark', dark);
-    if (browser) localStorage.setItem('glimpse-theme', dark ? 'dark' : 'light');
-  }
 </script>
 
 <main>
