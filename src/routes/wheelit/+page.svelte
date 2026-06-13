@@ -156,7 +156,7 @@
     }
   }
 
-  const FRICTION = 0.972;
+  const FRICTION = 0.985;
   const MIN_SPEED = 0.08;
 
   function animate() {
@@ -345,8 +345,8 @@
         {/each}
 
         <!-- Center cap -->
-        <circle cx={CX} cy={CY} r="26" fill="white" filter="url(#shadow)"/>
-        <circle cx={CX} cy={CY} r="20" fill="#fdf8f4" stroke="#e8734a" stroke-width="3"/>
+        <circle cx={CX} cy={CY} r="26" fill="var(--panel)" filter="url(#shadow)"/>
+        <circle cx={CX} cy={CY} r="20" fill="var(--panel-inner)" stroke="var(--accent)" stroke-width="3"/>
         <circle cx={CX} cy={CY} r="6" fill="#e8734a"/>
 
         <defs>

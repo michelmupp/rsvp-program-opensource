@@ -8,11 +8,11 @@
   const SAVE_KEY = "rsvp_state_v1";
 
   const [send, receive] = crossfade({
-  duration: 350,
-  easing: quintOut
+    duration: 350,
+    easing: quintOut
   });
 
-  let words = "Rapid serial visual presentation (RSVP) is a scientific method for studying the timing of vision. In RSVP, a sequence of stimuli is shown to an observer at one location in their visual field. The observer is instructed to report one of these stimuli - the target - which has a feature that differentiates it from the rest of the stream. For instance, observers may see a sequence of stimuli consisting of gray letters with the exception of one red letter. They are told to report the red letter. People make errors in this task in the form of reports of stimuli that occurred before or after the target. The position in time of the letter they report, relative to the target, is an estimate of the timing of visual selection on that trial.".split(" ");
+  let words = splitIntoTokens("Rapid serial visual presentation (RSVP) is a scientific method for studying the timing of vision. In RSVP, a sequence of stimuli is shown to an observer at one location in their visual field. Nondestructively? translator-presumably. The observer is instructed to report one of these stimuli - the target - which has a feature that differentiates it from the rest of the stream. For instance, observers may see a sequence of stimuli consisting of gray letters with the exception of one red letter. They are told to report the red letter. People make errors in this task in the form of reports of stimuli that occurred before or after the target. The position in time of the letter they report, relative to the target, is an estimate of the timing of visual selection on that trial.");
   $: parts = splitWord(words[index] ?? "");
   $: totalWords = words.length;
   $: currentWordNumber = Math.min(index + 1, totalWords);
@@ -29,14 +29,13 @@
   let epubError: string | null = null;
   let bookTitle: string | null = null;
   let isStarting = false;
-  const startDelayMs = 350; // "kleiner delay" (stell das gerne auf 250–600)
+  const startDelayMs = 350;
   let startTimeout: ReturnType<typeof setTimeout> | null = null;
-  let startAnimKey = 0;  // damit wir die Start-Animation sauber "triggern"
+  let startAnimKey = 0;
   let hasInitialized = false;
 
   let nightMode = false;
 
-  // safe localStorage helpers (recommended)
   function safeLoad(key: string): string | null {
     try { return localStorage.getItem(key); } catch { return null; }
   }
@@ -46,9 +45,6 @@
 
   onMount(() => {
     if (!browser) return;
-
-    // 1) saved preference wins
-    // Globales Theme lesen
     const globalTheme = localStorage.getItem('glimpse-theme');
     if (globalTheme === 'dark') nightMode = true;
     else if (globalTheme === 'light') nightMode = false;
@@ -58,8 +54,8 @@
   });
 
   $: if (browser && hasInitialized) {
-  localStorage.setItem('glimpse-theme', nightMode ? 'dark' : 'light');
-  document.documentElement.classList.toggle("dark", nightMode);
+    localStorage.setItem('glimpse-theme', nightMode ? 'dark' : 'light');
+    document.documentElement.classList.toggle("dark", nightMode);
   }
 
   type Chapter = {
@@ -84,7 +80,6 @@
   onMount(() => {
     if (!browser) return;
 
-    // Dark mode zuerst lesen
     const globalTheme = localStorage.getItem('glimpse-theme');
     if (globalTheme === 'dark') nightMode = true;
     else if (globalTheme === 'light') nightMode = false;
@@ -116,270 +111,270 @@
     }
   });
 
-  let pendingRestore: { 
-    chapterIndex: number; 
+  let pendingRestore: {
+    chapterIndex: number;
     wordIndex: number;
-    bookId: string; 
+    bookId: string;
   } | null = null;
 
   $: if (chapters.length > 0) {
-  const chap = chapters[selectedChapterIndex];
-  if (chap) words = chap.words;
+    const chap = chapters[selectedChapterIndex];
+    if (chap) words = chap.words;
   }
 
   function normalizeWhitespace(s: string) {
-  return s.replace(/\s+/g, " ").trim();
+    return s.replace(/\s+/g, " ").trim();
   }
-  
+
   function dirname(path: string) {
-  const i = path.lastIndexOf("/");
-  return i >= 0 ? path.slice(0, i + 1) : "";
+    const i = path.lastIndexOf("/");
+    return i >= 0 ? path.slice(0, i + 1) : "";
   }
-  
+
   function joinPath(base: string, rel: string) {
-  // very small path join/normalize for EPUB internal paths
-  const full = (base + rel).split("/").filter(Boolean);
-  const out: string[] = [];
-  for (const part of full) {
-    if (part === ".") continue;
-    if (part === "..") out.pop();
-    else out.push(part);
+    const full = (base + rel).split("/").filter(Boolean);
+    const out: string[] = [];
+    for (const part of full) {
+      if (part === ".") continue;
+      if (part === "..") out.pop();
+      else out.push(part);
+    }
+    return out.join("/");
   }
-  return out.join("/");
-  }
-  
+
   function parseXml(xml: string) {
-  return new DOMParser().parseFromString(xml, "application/xml");
+    return new DOMParser().parseFromString(xml, "application/xml");
   }
 
   function getTextFromHtml(html: string) {
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  // drop scripts/styles just in case
-  doc.querySelectorAll("script, style, nav").forEach((n) => n.remove());
-  return normalizeWhitespace(doc.body?.textContent ?? "");
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("script, style, nav").forEach((n) => n.remove());
+    return normalizeWhitespace(doc.body?.textContent ?? "");
   }
 
   function getSentenceBounds(idx: number, words: string[]) {
-  let start = idx;
-  while (start > 0 && !/[.!?]$/.test(words[start - 1])) start--;
+    let start = idx;
+    while (start > 0 && !/[.!?]$/.test(words[start - 1])) start--;
 
-  let end = idx;
-  while (end < words.length - 1 && !/[.!?]$/.test(words[end])) end++;
+    let end = idx;
+    while (end < words.length - 1 && !/[.!?]$/.test(words[end])) end++;
 
-  return { start, end };
+    return { start, end };
   }
-  
+
   function getThreeSentenceWindow(idx: number, words: string[]) {
-  const cur = getSentenceBounds(idx, words);
+    const cur = getSentenceBounds(idx, words);
 
-  // previous sentence
-  let start = cur.start;
-  if (cur.start > 0) {
-    const prev = getSentenceBounds(cur.start - 1, words);
-    start = prev.start;
-  }
+    let start = cur.start;
+    if (cur.start > 0) {
+      const prev = getSentenceBounds(cur.start - 1, words);
+      start = prev.start;
+    }
 
-  // next sentence
-  let end = cur.end;
-  if (cur.end < words.length - 1) {
-    const next = getSentenceBounds(cur.end + 1, words);
-    end = next.end;
-  }
+    let end = cur.end;
+    if (cur.end < words.length - 1) {
+      const next = getSentenceBounds(cur.end + 1, words);
+      end = next.end;
+    }
 
-  return { start, end };
+    return { start, end };
   }
 
   let pauseWindow:
-  | { start: number; end: number }
-  | null = null;
-  
+    | { start: number; end: number }
+    | null = null;
+
   $: if (!isPlaying) {
-  pauseWindow = getThreeSentenceWindow(index, words);
+    pauseWindow = getThreeSentenceWindow(index, words);
   }
 
-  async function loadEpubFile(file: File): Promise<{ title: string | null; chapters: chapter[] }> {
-  if (!browser) throw new Error("EPUB loading is only available in the browser");
+  async function loadEpubFile(file: File): Promise<{ title: string | null; chapters: Chapter[] }> {
+    if (!browser) throw new Error("EPUB loading is only available in the browser");
 
-  const { default: JSZip } = await import("jszip");
+    const { default: JSZip } = await import("jszip");
 
-  const buf = await file.arrayBuffer();
-  const zip = await JSZip.loadAsync(buf);
+    const buf = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(buf);
 
-  // 1) container.xml tells us where the OPF is
-  const containerFile = zip.file("META-INF/container.xml");
-  if (!containerFile) throw new Error("Invalid EPUB: META-INF/container.xml missing");
+    const containerFile = zip.file("META-INF/container.xml");
+    if (!containerFile) throw new Error("Invalid EPUB: META-INF/container.xml missing");
 
-  const containerXml = await containerFile.async("string");
-  const containerDoc = parseXml(containerXml);
-  const rootfileEl = containerDoc.querySelector("rootfile");
-  const opfPath = rootfileEl?.getAttribute("full-path");
-  if (!opfPath) throw new Error("Invalid EPUB: OPF path not found in container.xml");
+    const containerXml = await containerFile.async("string");
+    const containerDoc = parseXml(containerXml);
+    const rootfileEl = containerDoc.querySelector("rootfile");
+    const opfPath = rootfileEl?.getAttribute("full-path");
+    if (!opfPath) throw new Error("Invalid EPUB: OPF path not found in container.xml");
 
-  const opfFile = zip.file(opfPath);
-  if (!opfFile) throw new Error(`Invalid EPUB: OPF file not found: ${opfPath}`);
+    const opfFile = zip.file(opfPath);
+    if (!opfFile) throw new Error(`Invalid EPUB: OPF file not found: ${opfPath}`);
 
-  // 2) parse OPF to get title, manifest, spine order
-  const opfXml = await opfFile.async("string");
-  const opfDoc = parseXml(opfXml);
+    const opfXml = await opfFile.async("string");
+    const opfDoc = parseXml(opfXml);
 
-  const title =
-    opfDoc.querySelector("metadata > title")?.textContent ||
-    opfDoc.querySelector("dc\\:title")?.textContent ||
-    opfDoc.querySelector("title")?.textContent ||
-    null;
+    const title =
+      opfDoc.querySelector("metadata > title")?.textContent ||
+      opfDoc.querySelector("dc\\:title")?.textContent ||
+      opfDoc.querySelector("title")?.textContent ||
+      null;
 
-  // manifest: id -> href
-  const manifest = new Map<
-  string,
-  { href: string; mediaType?: string; properties?: string }
-  >();
-  
-  opfDoc.querySelectorAll("manifest > item").forEach((item) => {
-  const id = item.getAttribute("id");
-  const href = item.getAttribute("href");
-  if (!id || !href) return;
-  manifest.set(id, {
-    href,
-    mediaType: item.getAttribute("media-type") || undefined,
-    properties: item.getAttribute("properties") || undefined
-  });
-  });
+    const manifest = new Map<
+      string,
+      { href: string; mediaType?: string; properties?: string }
+    >();
 
-  // spine order: itemref idref in reading order, skip linear="no"
-  const spineIdrefs: string[] = [];
-  opfDoc.querySelectorAll("spine > itemref").forEach((itemref) => {
-    const linear = (itemref.getAttribute("linear") || "yes").toLowerCase();
-    if (linear === "no") return;
-    const idref = itemref.getAttribute("idref");
-    if (idref) spineIdrefs.push(idref);
-  });
+    opfDoc.querySelectorAll("manifest > item").forEach((item) => {
+      const id = item.getAttribute("id");
+      const href = item.getAttribute("href");
+      if (!id || !href) return;
+      manifest.set(id, {
+        href,
+        mediaType: item.getAttribute("media-type") || undefined,
+        properties: item.getAttribute("properties") || undefined
+      });
+    });
 
-  if (spineIdrefs.length === 0) throw new Error("EPUB has an empty spine");
+    const spineIdrefs: string[] = [];
+    opfDoc.querySelectorAll("spine > itemref").forEach((itemref) => {
+      const linear = (itemref.getAttribute("linear") || "yes").toLowerCase();
+      if (linear === "no") return;
+      const idref = itemref.getAttribute("idref");
+      if (idref) spineIdrefs.push(idref);
+    });
 
-  const opfBase = dirname(opfPath);
-  const outChapters: Chapter[] = [];
-  
-  for (const idref of spineIdrefs) {
-  const item = manifest.get(idref);
-  if (!item) continue;
+    if (spineIdrefs.length === 0) throw new Error("EPUB has an empty spine");
 
-  // skip EPUB nav doc explicitly if marked
-  if ((item.properties || "").split(/\s+/).includes("nav")) continue;
+    const opfBase = dirname(opfPath);
+    const outChapters: Chapter[] = [];
 
-  const internalPath = joinPath(opfBase, item.href);
-  const entry = zip.file(internalPath);
-  if (!entry) continue;
+    for (const idref of spineIdrefs) {
+      const item = manifest.get(idref);
+      if (!item) continue;
 
-  const html = await entry.async("string");
-  const text = getTextFromHtml(html);
-  if (!text) continue;
+      if ((item.properties || "").split(/\s+/).includes("nav")) continue;
 
-  const rawTitle = pickChapterTitleFromHtml(html) || item.href;
-const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
+      const internalPath = joinPath(opfBase, item.href);
+      const entry = zip.file(internalPath);
+      if (!entry) continue;
 
-  const skip = looksLikeFrontMatter(titleGuess, item.href, text);
+      const html = await entry.async("string");
+      const text = getTextFromHtml(html);
+      if (!text) continue;
 
-  outChapters.push({
-    idref,
-    href: item.href,
-    title: titleGuess,
-    text,
-    words: text.split(/\s+/).filter(Boolean),
-    skip
-  });
-  }
-  
-  if (outChapters.length === 0) throw new Error("Could not extract chapters from EPUB");
-  
-  return { title, chapters: outChapters };
+      const rawTitle = pickChapterTitleFromHtml(html) || item.href;
+      const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
+      const skip = looksLikeFrontMatter(titleGuess, item.href, text);
+
+      outChapters.push({
+        idref,
+        href: item.href,
+        title: titleGuess,
+        text,
+        words: splitIntoTokens(text),
+        skip
+      });
+    }
+
+    if (outChapters.length === 0) throw new Error("Could not extract chapters from EPUB");
+
+    return { title, chapters: outChapters };
   }
 
   async function onPickEpub(e: Event) {
-  const input = e.currentTarget as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) return;
-  currentBookId = `${file.name}-${file.size}`;
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    currentBookId = `${file.name}-${file.size}`;
 
-  epubError = null;
-  isLoadingEpub = true;
+    epubError = null;
+    isLoadingEpub = true;
 
-  try {
-    const { title, chapters: loaded } = await loadEpubFile(file);
-    bookTitle = title;
-    
-    chapters = loaded;
-    
-    // pick first non-skipped chapter if skipFrontMatter enabled
-    if (skipFrontMatter) {
-  const firstGood = chapters.findIndex((c) => !c.skip);
-  selectedChapterIndex = firstGood >= 0 ? firstGood : 0;
-  } else {
-  selectedChapterIndex = 0;
-  }
-  
-  if (pendingRestore && currentBookId && pendingRestore.bookId === currentBookId) {
-    const chap = Math.max(0, Math.min(pendingRestore.chapterIndex, chapters.length - 1));
-    selectedChapterIndex = chap;
+    try {
+      const { title, chapters: loaded } = await loadEpubFile(file);
+      bookTitle = title;
 
-    const wi = Math.max(
-      0,
-      Math.min(pendingRestore.wordIndex, chapters[chap].words.length - 1)
-    );
+      chapters = loaded;
 
-    pause();
-    index = wi;
-    pauseWindow = getThreeSentenceWindow(index, chapters[chap].words);
+      if (skipFrontMatter) {
+        const firstGood = chapters.findIndex((c) => !c.skip);
+        selectedChapterIndex = firstGood >= 0 ? firstGood : 0;
+      } else {
+        selectedChapterIndex = 0;
+      }
 
-    pendingRestore = null;
-  } else {
-    selectedChapterIndex = selectedChapterIndex; // keep chosen start
-    restart();
-  }
-  } catch (err: any) {
-    epubError = err?.message ?? "Failed to load EPUB";
-  } finally {
-    isLoadingEpub = false;
-    input.value = ""; // allow re-uploading same file
-  }
+      if (pendingRestore && currentBookId && pendingRestore.bookId === currentBookId) {
+        const chap = Math.max(0, Math.min(pendingRestore.chapterIndex, chapters.length - 1));
+        selectedChapterIndex = chap;
+
+        const wi = Math.max(
+          0,
+          Math.min(pendingRestore.wordIndex, chapters[chap].words.length - 1)
+        );
+
+        pause();
+        index = wi;
+        pauseWindow = getThreeSentenceWindow(index, chapters[chap].words);
+
+        pendingRestore = null;
+      } else {
+        selectedChapterIndex = selectedChapterIndex;
+        restart();
+      }
+    } catch (err: any) {
+      epubError = err?.message ?? "Failed to load EPUB";
+    } finally {
+      isLoadingEpub = false;
+      input.value = "";
+    }
   }
 
   function looksLikeFrontMatter(title: string, href: string, text: string) {
-  const t = (title || "").toLowerCase();
-  const h = (href || "").toLowerCase();
+    const t = (title || "").toLowerCase();
+    const h = (href || "").toLowerCase();
 
-  // filename/path heuristics
-  const hrefBad =
-    /toc|nav|contents|content|cover|copyright|titlepage|title-page|halftitle|half-title|frontmatter|front-matter|preface|foreword|introduction|dedication|acknowledg|colophon|imprint|about/i.test(
-      h
-    );
+    const hrefBad =
+      /toc|nav|contents|content|cover|copyright|titlepage|title-page|halftitle|half-title|frontmatter|front-matter|preface|foreword|introduction|dedication|acknowledg|colophon|imprint|about/i.test(
+        h
+      );
 
-  // title heuristics
-  const titleBad =
-    /table of contents|contents|toc|cover|copyright|title page|preface|foreword|introduction|dedication|acknowledg|colophon|imprint|about/i.test(
-      t
-    );
+    const titleBad =
+      /table of contents|contents|toc|cover|copyright|title page|preface|foreword|introduction|dedication|acknowledg|colophon|imprint|about/i.test(
+        t
+      );
 
-  // content heuristics: very short chapters are often front-matter
-  const wordCount = text.split(/\s+/).filter(Boolean).length;
-  const tooShort = wordCount < 120; // tune if you want
+    const wordCount = splitIntoTokens(text).length;
+    const tooShort = wordCount < 120;
 
-  return hrefBad || titleBad || tooShort;
+    return hrefBad || titleBad || tooShort;
   }
-  
+
   function pickChapterTitleFromHtml(html: string) {
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  const h =
-    doc.querySelector("h1")?.textContent?.trim() ||
-    doc.querySelector("h2")?.textContent?.trim() ||
-    doc.querySelector("title")?.textContent?.trim() ||
-    "";
-  return normalizeWhitespace(h);
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const h =
+      doc.querySelector("h1")?.textContent?.trim() ||
+      doc.querySelector("h2")?.textContent?.trim() ||
+      doc.querySelector("title")?.textContent?.trim() ||
+      "";
+    return normalizeWhitespace(h);
+  }
+
+  // ── Token splitting: trenne Bindestrich-Wörter ──
+  function splitIntoTokens(text: string): string[] {
+    return text
+      .split(/\s+/)
+      .filter(Boolean)
+      .flatMap(word => {
+        const parts = word.split(/(?<=[a-zA-ZäöüÄÖÜ])-(?=[a-zA-ZäöüÄÖÜ])/);
+        if (parts.length <= 1) return [word];
+        return parts.map((p, i) => i < parts.length - 1 ? p + "-" : p);
+      });
   }
 
   function msPerWord(word: string = "") {
     const base = Math.max(10, Math.round(60000 / wpm));
     if (/[.!?]$/.test(word)) return base * 2.5;
+    if (/-$/.test(word))     return base * 1.8;
     if (/[,;:\-—]$/.test(word)) return base * 1.5;
+    if (/["„"»«]$/.test(word))  return base * 1.3;
     return base;
   }
 
@@ -431,22 +426,15 @@ const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
   let holdActive = false;
 
   function holdStart(e: Event) {
-    // Prevent iOS text selection / context menu / scroll gestures from “stealing” the press
     e.preventDefault();
-
     holdActive = true;
-
-    // If you’re already playing, do nothing
     if (isPlaying || isStarting) return;
-
     start();
   }
 
   function holdEnd() {
     if (!holdActive) return;
     holdActive = false;
-
-    // Only pause if we are actually playing/starting
     if (isPlaying || isStarting) pause();
   }
 
@@ -461,14 +449,11 @@ const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
 
     if (!words.length) return;
 
-    // Get current sentence bounds
     const current = getSentenceBounds(index, words);
 
-    // If already at first sentence, go to start
     if (current.start === 0) {
       index = 0;
     } else {
-      // Get previous sentence bounds
       const previous = getSentenceBounds(current.start - 1, words);
       index = previous.start;
     }
@@ -477,38 +462,37 @@ const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
   }
 
   let lastWpm = wpm;
-  
+
   $: if (isPlaying && !isStarting && wpm !== lastWpm) {
     lastWpm = wpm;
   }
-  
+
   function getORPLetterRank(letterCount: number): number {
-  if (letterCount <= 3) return 0;
-  if (letterCount <= 5) return 1;
-  if (letterCount <= 9) return 2;
-  return 3;
+    if (letterCount <= 3) return 0;
+    if (letterCount <= 5) return 1;
+    if (letterCount <= 9) return 2;
+    return 3;
   }
-  
+
   function splitWord(word: string) {
-  // indices of letters in the ORIGINAL string (keeps punctuation in place)
-  const letterMatches = [...word.matchAll(/[A-Za-z]/g)];
-  const letterCount = letterMatches.length;
+    const letterMatches = [...word.matchAll(/[A-Za-z]/g)];
+    const letterCount = letterMatches.length;
 
-  // No letters: don't highlight anything
-  if (letterCount === 0) {
-    return { left: word, center: "", right: "" };
+    if (letterCount === 0) {
+      return { left: word, center: "", right: "" };
+    }
+
+    const rank = getORPLetterRank(letterCount);
+    const clampedRank = Math.min(rank, letterCount - 1);
+    const idx = letterMatches[clampedRank].index!;
+
+    return {
+      left: word.slice(0, idx),
+      center: word[idx],
+      right: word.slice(idx + 1)
+    };
   }
 
-  const rank = getORPLetterRank(letterCount);
-  const clampedRank = Math.min(rank, letterCount - 1);
-  const idx = letterMatches[clampedRank].index!; // index in original word
-
-  return {
-    left: word.slice(0, idx),
-    center: word[idx],
-    right: word.slice(idx + 1)
-  };
-  }
   onDestroy(() => pause());
 
   let sessionStartIndex = 0;
@@ -524,10 +508,10 @@ const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
       localStorage.setItem('reading-log', JSON.stringify(log));
     } catch {}
   }
-  
-  // Remaining time estimate (in seconds)
+
   $: remainingWords = totalWords > 0 ? Math.max(0, totalWords - currentWordNumber) : 0;
   $: remainingSeconds = wpm > 0 ? Math.ceil((remainingWords / wpm) * 60) : 0;
+
   $: if (browser && hasInitialized) {
     const state: Partial<SavedState> = { wpm, skipFrontMatter };
 
@@ -539,6 +523,7 @@ const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
 
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   }
+
   function formatTime(sec: number) {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
