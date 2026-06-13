@@ -1,5 +1,19 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { browser } from '$app/environment';
+  import { onMount } from 'svelte';
+
+  let dark = false;
+
+  onMount(() => {
+    dark = document.documentElement.classList.contains('dark');
+  });
+
+  function toggleTheme() {
+    dark = !dark;
+    document.documentElement.classList.toggle('dark', dark);
+    if (browser) localStorage.setItem('glimpse-theme', dark ? 'dark' : 'light');
+  }
 </script>
 
 <main>
@@ -127,17 +141,6 @@
 </main>
 
 <style>
-  :global(*, *::before, *::after) {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-
-  :global(body) {
-    background: #fdf8f4;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  }
-
   main {
     min-height: 100vh;
     display: grid;
@@ -171,19 +174,19 @@
   h1 {
     font-size: 3rem;
     font-weight: 800;
-    color: #1a1a1a;
+    color: var(--text);
     letter-spacing: -1px;
   }
 
   .tagline {
     font-size: 1.1rem;
-    color: #888;
+    color: var(--muted);
     line-height: 1.7;
   }
 
   /* App cards */
   .app-card {
-    background: white;
+    background: var(--panel);
     border-radius: 24px;
     padding: 28px 24px;
     width: 100%;
@@ -191,7 +194,7 @@
     flex-direction: column;
     align-items: center;
     gap: 20px;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+    box-shadow: 0 2px 16px var(--shadow);
   }
 
   .app-header {
@@ -210,13 +213,13 @@
   h2 {
     font-size: 1.4rem;
     font-weight: 800;
-    color: #1a1a1a;
+    color: var(--text);
     letter-spacing: -0.4px;
   }
 
   .app-sub {
     font-size: 0.88rem;
-    color: #999;
+    color: var(--muted);
     margin-top: 2px;
   }
 
@@ -230,7 +233,7 @@
   }
 
   .feature {
-    background: #fdf8f4;
+    background: var(--panel-inner);
     border-radius: 14px;
     padding: 12px 14px;
     display: flex;
@@ -238,7 +241,7 @@
     align-items: center;
     gap: 6px;
     font-size: 0.82rem;
-    color: #666;
+    color: var(--muted);
     flex: 1;
     min-width: 90px;
     max-width: 130px;
@@ -250,8 +253,8 @@
 
   /* Buttons */
   .cta {
-    background: #e8734a;
-    color: white;
+    background: var(--accent);
+    color: var(--panel);
     border: none;
     padding: 16px 48px;
     border-radius: 50px;
@@ -259,7 +262,7 @@
     font-weight: 700;
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.15s;
-    box-shadow: 0 4px 20px rgba(232, 115, 74, 0.35);
+    box-shadow: 0 4px 20px var(--accent-shadow);
     width: 100%;
     max-width: 280px;
   }
@@ -274,11 +277,11 @@
   }
 
   .cta.pomodoro {
-    background: #1a1a1a;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+    background: var(--text);
+    box-shadow: 0 4px 20px var(--shadow);
   }
 
   .cta.pomodoro:hover {
-    box-shadow: 0 8px 28px rgba(0,0,0,0.26);
+    box-shadow: 0 8px 28px var(--shadow);
   }
 </style>

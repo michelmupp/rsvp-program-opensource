@@ -48,17 +48,17 @@
     if (!browser) return;
 
     // 1) saved preference wins
-    const saved = safeLoad("rsvp_night_mode");
-    if (saved === "1") nightMode = true;
-    else if (saved === "0") nightMode = false;
+    // Globales Theme lesen
+    const globalTheme = localStorage.getItem('glimpse-theme');
+    if (globalTheme === 'dark') nightMode = true;
+    else if (globalTheme === 'light') nightMode = false;
     else {
-      // 2) otherwise use system preference
       nightMode = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
     }
   });
 
   $: if (browser) {
-    safeSave("rsvp_night_mode", nightMode ? "1" : "0");
+    localStorage.setItem('glimpse-theme', nightMode ? 'dark' : 'light');
     document.documentElement.classList.toggle("dark", nightMode);
   }
 
@@ -548,20 +548,16 @@ const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
   </div>
   <div class="top-progress-meta">
     <span class="meta-left">
-      <button class="nav-btn" on:click={() => goto('/')} aria-label="Home" style="pointer-events:all;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M19 12H5M12 5l-7 7 7 7"/>
-        </svg>
-      </button>
       {currentWordNumber} / {totalWords}
     </span>
     <span class="meta-right">
       {formatTime(remainingSeconds)} remaining
-      <button class="nav-btn" on:click={() => goto('/reader/stats')} aria-label="Statistiken" style="pointer-events:all; font-size:1.5rem; margin-left:8px;">
-        📖
-      </button>
     </span>
   </div>
+
+  <button class="stats-btn" on:click={() => goto('/reader/stats')} aria-label="Statistiken">
+    📖
+  </button>
   <section class="display" 
   aria-live="polite" 
   aria-label="RSVP word display"
@@ -668,11 +664,6 @@ const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
   Back
 </button>
   </section>
-
-  <button class="modeToggle" on:click={() => (nightMode = !nightMode)}>
-    {nightMode ? "Day" : "Night"}
-  </button>
-
   <section class="bottom-bar" aria-label="Reading speed control">
     <div class="speed-row">
       <span class="label">Speed</span>
@@ -691,41 +682,6 @@ const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
 </main>
 
 <style>
-  :global(*, *::before, *::after) {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-
-  /* Day mode — warm cream palette from landing page */
-  :global(:root) {
-    --bg:     #fdf8f4;
-    --text:   #1a1a1a;
-    --muted:  #888880;
-    --panel:  #ffffff;
-    --border: rgba(0, 0, 0, 0.08);
-    --accent: #e8734a;
-    --accent-shadow: rgba(232, 115, 74, 0.35);
-  }
-
-  /* Night mode overrides */
-  :global(.dark) {
-    --bg:     #1a1410;
-    --text:   #f0ebe5;
-    --muted:  #9a9086;
-    --panel:  #241e18;
-    --border: rgba(255, 255, 255, 0.08);
-    --accent: #e8734a;
-    --accent-shadow: rgba(232, 115, 74, 0.25);
-  }
-
-  :global(html), :global(body) {
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    transition: background 0.2s, color 0.2s;
-  }
-
   /* ── Layout ── */
   .wrap {
     background: var(--bg);
@@ -736,7 +692,7 @@ const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
     gap: 12px;
     padding: 24px;
     box-sizing: border-box;
-    padding-top: 8px;
+    padding-top: 80px;
   }
 
   /* ── Progress bar ── */
@@ -951,19 +907,6 @@ const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
     cursor: not-allowed;
   }
 
-  /* Night/Day toggle */
-  .modeToggle {
-  padding: 8px 16px;
-  border-radius: 50px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
   /* ── Bottom bar ── */
   .bottom-bar {
     position: sticky;
@@ -995,36 +938,30 @@ const titleGuess = rawTitle.replace(/,\s*.+$/, '').trim();
     .paused-view { font-size: 1.1rem; line-height: 1.5; }
   }
 
-.nav-btn {
-  background: var(--panel);
-  border: none;
-  border-radius: 14px;
-  width: 44px;
-  height: 44px;
-  display: inline-grid;
-  place-items: center;
-  cursor: pointer;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  color: var(--muted);
-  transition: transform 0.15s, box-shadow 0.15s, color 0.15s;
-  padding: 0;
-  margin-right: 10px;
-  vertical-align: middle;
-  opacity: 1;
-  font-size: 0;
-}
-.nav-btn:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.12) !important;
-  color: var(--accent);
-}
-.nav-btn svg {
-  width: 20px;
-  height: 20px;
-}
-.meta-left {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
+.stats-btn {
+    position: fixed;
+    top: 20px;
+    right: 76px;
+    z-index: 1000;
+    background: var(--panel);
+    border: none;
+    border-radius: 14px;
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s, box-shadow 0.15s;
+    pointer-events: all;
+    padding: 0;
+  }
+
+  .stats-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  }
 </style>
