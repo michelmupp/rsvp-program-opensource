@@ -335,11 +335,6 @@ function sendNotification(title: string, body: string) {
 <main>
   <!-- Top bar -->
   <nav>
-    <button class="nav-btn" on:click={() => goto('/')} aria-label="Home">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M19 12H5M12 5l-7 7 7 7"/>
-      </svg>
-    </button>
     <button class="nav-btn" on:click={() => goto('/stats')} aria-label="Statistics">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="12" width="4" height="9" rx="1"/>
@@ -457,16 +452,6 @@ function sendNotification(title: string, body: string) {
 </main>
 
 <style>
-  :global(*, *::before, *::after) {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-  :global(body) {
-    background: #fdf8f4;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  }
-
   main {
     min-height: 100vh;
     display: grid;
@@ -478,18 +463,16 @@ function sendNotification(title: string, body: string) {
   nav {
     position: fixed;
     top: 20px;
-    left: 0;
-    right: 0;
+    right: 76px;
+    z-index: 1000;
     display: flex;
-    justify-content: space-between;
-    padding: 0 24px;
+    gap: 12px;
     pointer-events: none;
-    z-index: 10;
   }
 
   .nav-btn {
     pointer-events: all;
-    background: white;
+    background: var(--panel);
     border: none;
     border-radius: 14px;
     width: 44px;
@@ -497,14 +480,14 @@ function sendNotification(title: string, body: string) {
     display: grid;
     place-items: center;
     cursor: pointer;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    color: #555;
+    box-shadow: 0 2px 12px var(--shadow);
+    color: var(--muted);
     transition: transform 0.15s, box-shadow 0.15s, color 0.15s;
   }
   .nav-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-    color: #e8734a;
+    box-shadow: 0 6px 20px var(--shadow);
+    color: var(--accent);
   }
   .nav-btn svg {
     width: 20px;
@@ -524,7 +507,7 @@ function sendNotification(title: string, body: string) {
   h1 {
     font-size: 2.2rem;
     font-weight: 800;
-    color: #1a1a1a;
+    color: var(--text);
     letter-spacing: -1px;
   }
 
@@ -538,23 +521,22 @@ function sendNotification(title: string, body: string) {
 
   .clock {
     width: 100%;
-    filter: drop-shadow(0 8px 32px rgba(0,0,0,0.10));
+    filter: drop-shadow(0 8px 32px var(--shadow));
     user-select: none;
   }
 
-  /* SVG internals */
   .clock-face {
-    fill: white;
-    stroke: #f0ebe5;
+    fill: var(--panel);
+    stroke: var(--border);
     stroke-width: 2;
   }
   .tick-major {
-    stroke: #bbb;
+    stroke: var(--muted);
     stroke-width: 2;
     stroke-linecap: round;
   }
   .tick-minor {
-    stroke: #ddd;
+    stroke: var(--border);
     stroke-width: 1;
     stroke-linecap: round;
   }
@@ -562,22 +544,22 @@ function sendNotification(title: string, body: string) {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
     font-weight: 600;
-    fill: #999;
+    fill: var(--muted);
   }
   .time-big {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 32px;
     font-weight: 800;
-    fill: #1a1a1a;
+    fill: var(--text);
     letter-spacing: -1px;
   }
   .phase-label {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
-    fill: #999;
+    fill: var(--muted);
   }
   .progress-arc {
-    stroke: #e8734a;
+    stroke: var(--accent);
   }
   .progress-arc.break-arc {
     stroke: #5ba3c9;
@@ -589,11 +571,11 @@ function sendNotification(title: string, body: string) {
   }
   .hand:active { cursor: grabbing; }
   .minute-hand {
-    stroke: #e8734a;
+    stroke: var(--accent);
     stroke-width: 4;
   }
   .hour-hand {
-    stroke: #1a1a1a;
+    stroke: var(--text);
     stroke-width: 3.5;
   }
   .hand-knob {
@@ -607,24 +589,24 @@ function sendNotification(title: string, body: string) {
   }
   .hand-knob:active { cursor: grabbing; }
   .minute-knob {
-    fill: #e8734a;
-    stroke: white;
+    fill: var(--accent);
+    stroke: var(--panel);
     stroke-width: 2.5;
   }
   .hour-knob {
-    fill: #1a1a1a;
-    stroke: white;
+    fill: var(--text);
+    stroke: var(--panel);
     stroke-width: 2.5;
   }
   .center-dot {
-    fill: #1a1a1a;
+    fill: var(--text);
   }
 
   .clock-labels {
     display: flex;
     gap: 20px;
     font-size: 0.8rem;
-    color: #999;
+    color: var(--muted);
     flex-wrap: wrap;
     justify-content: center;
   }
@@ -636,7 +618,7 @@ function sendNotification(title: string, body: string) {
   }
 
   .cta {
-    background: #e8734a;
+    background: var(--accent);
     color: white;
     border: none;
     padding: 18px 64px;
@@ -645,32 +627,32 @@ function sendNotification(title: string, body: string) {
     font-weight: 700;
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
-    box-shadow: 0 4px 20px rgba(232, 115, 74, 0.35);
+    box-shadow: 0 4px 20px var(--accent-shadow);
     letter-spacing: 0.3px;
   }
   .cta:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 28px rgba(232, 115, 74, 0.45);
+    box-shadow: 0 8px 28px var(--accent-shadow);
   }
   .cta:active {
     transform: translateY(0);
   }
   .cta.stop {
-    background: #1a1a1a;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+    background: var(--text);
+    box-shadow: 0 4px 20px var(--shadow);
   }
   .cta.stop:hover {
-    box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+    box-shadow: 0 8px 28px var(--shadow);
   }
   .cta.resume {
-    background: #e8734a;
-    box-shadow: 0 4px 20px rgba(232, 115, 74, 0.35);
+    background: var(--accent);
+    box-shadow: 0 4px 20px var(--accent-shadow);
   }
 
   .cta-pause {
-    background: white;
-    color: #1a1a1a;
-    border: 2px solid #eee;
+    background: var(--panel);
+    color: var(--text);
+    border: 2px solid var(--border);
     width: 56px;
     height: 56px;
     border-radius: 50%;
@@ -679,12 +661,12 @@ function sendNotification(title: string, body: string) {
     display: grid;
     place-items: center;
     transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    box-shadow: 0 2px 12px var(--shadow);
     flex-shrink: 0;
   }
   .cta-pause:hover {
     transform: translateY(-2px);
-    border-color: #ccc;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    border-color: var(--muted);
+    box-shadow: 0 6px 20px var(--shadow);
   }
 </style>

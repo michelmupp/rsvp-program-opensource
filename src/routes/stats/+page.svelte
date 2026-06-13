@@ -17,6 +17,11 @@
   const IDEAL_RATIO = 4.0;        // 4 min focus per 1 min break
 
   onMount(() => {
+    // Dark mode sync
+    const theme = localStorage.getItem('glimpse-theme');
+    if (theme === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+
     try {
       stats = JSON.parse(localStorage.getItem('pomodoro-stats') || '{"sessions":0,"totalWork":0,"totalBreak":0}');
       history = JSON.parse(localStorage.getItem('pomodoro-history') || '[]');
@@ -211,7 +216,7 @@
         {:else}
           <div class="donut-row">
             <svg viewBox="0 0 100 100" class="donut-svg">
-              <circle cx="50" cy="50" r="38" fill="none" stroke="#f5f0eb" stroke-width="14"/>
+              <circle cx="50" cy="50" r="38" fill="none" stroke="var(--border)" stroke-width="14"/>
               <!-- Break arc first (full circle as background if needed) -->
               {#if breakPct > 0}
                 <path d={donutPath(workPct, 1, 38, 50, 50)} fill="none" stroke="#5ba3c9" stroke-width="14" stroke-linecap="butt"/>
@@ -239,7 +244,7 @@
                 </div>
               </div>
               <div class="legend-item">
-                <span class="legend-dot" style="background:#1a1a1a"></span>
+                <span class="legend-dot" style="background:var(--text)"></span>
                 <div>
                   <p class="legend-label">Sessions</p>
                   <p class="legend-val">{todayEntry.sessions}</p>
@@ -259,7 +264,7 @@
           <div class="clock-24-wrap">
             <svg viewBox="0 0 200 200" class="clock-24-svg">
               <!-- Background ring -->
-              <circle cx={CX} cy={CY} r={CLOCK_R} fill="none" stroke="#f5f0eb" stroke-width="18"/>
+              <circle cx={CX} cy={CY} r={CLOCK_R} fill="none" stroke="var(--border)" stroke-width="18"/>
               <!-- Sessions -->
               {#each todaySessions as s}
                 <path
@@ -279,7 +284,7 @@
                 {/if}
               {/each}
               <!-- Center -->
-              <circle cx={CX} cy={CY} r="28" fill="white"/>
+              <circle cx={CX} cy={CY} r="28" fill="var(--panel)"/>
               <text x={CX} y={CY - 6} text-anchor="middle" dominant-baseline="central" class="clock-center-big">{todayEntry.sessions}</text>
               <text x={CX} y={CY + 10} text-anchor="middle" dominant-baseline="central" class="clock-center-sub">Sessions</text>
             </svg>
@@ -297,7 +302,7 @@
         <div class="score-row">
           <svg viewBox="0 0 140 140" class="score-svg">
             <!-- Background arc -->
-            <circle cx={SCX} cy={SCY} r={SR} fill="none" stroke="#f5f0eb" stroke-width="12"/>
+            <circle cx={SCX} cy={SCY} r={SR} fill="none" stroke="var(--border)" stroke-width="12"/>
             <!-- Score arc -->
             {#if productivityScore > 0}
               <path d={scoreArcPath} fill="none" stroke={scoreColor} stroke-width="12" stroke-linecap="round"/>
@@ -340,12 +345,6 @@
 </main>
 
 <style>
-  :global(*, *::before, *::after) { box-sizing: border-box; margin: 0; padding: 0; }
-  :global(body) {
-    background: #fdf8f4;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  }
-
   main {
     min-height: 100vh;
     display: grid;
@@ -354,14 +353,14 @@
     position: relative;
   }
 
-  nav { position: fixed; top: 20px; left: 24px; z-index: 10; }
+  nav { position: fixed; top: 20px; left: 76px; z-index: 1000; }
   .nav-btn {
-    background: white; border: none; border-radius: 14px;
+    background: var(--panel); border: none; border-radius: 14px;
     width: 44px; height: 44px; display: grid; place-items: center;
-    cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    color: #555; transition: transform 0.15s, box-shadow 0.15s, color 0.15s;
+    cursor: pointer; box-shadow: 0 2px 12px var(--shadow);
+    color: var(--muted); transition: transform 0.15s, box-shadow 0.15s, color 0.15s;
   }
-  .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); color: #e8734a; }
+  .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--shadow); color: var(--accent); }
   .nav-btn svg { width: 20px; height: 20px; }
 
   .hero {
@@ -371,92 +370,87 @@
 
   .logo { display: flex; flex-direction: column; align-items: center; gap: 8px; }
   .logo-icon { font-size: 3rem; }
-  h1 { font-size: 2.8rem; font-weight: 800; color: #1a1a1a; letter-spacing: -1px; }
+  h1 { font-size: 2.8rem; font-weight: 800; color: var(--text); letter-spacing: -1px; }
 
-  /* Cards */
   .cards { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%; }
   .card {
-    background: white; border-radius: 20px; padding: 18px 14px;
+    background: var(--panel); border-radius: 20px; padding: 18px 14px;
     display: flex; flex-direction: column; align-items: center; gap: 5px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06); flex: 1; min-width: 100px;
+    box-shadow: 0 2px 12px var(--shadow); flex: 1; min-width: 100px;
   }
   .card-icon { font-size: 1.6rem; }
-  .card-value { font-size: 1.4rem; font-weight: 800; color: #1a1a1a; letter-spacing: -0.5px; }
-  .card-label { font-size: 0.78rem; color: #999; font-weight: 500; }
+  .card-value { font-size: 1.4rem; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+  .card-label { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
 
-  /* Tabs */
   .tabs {
-    display: flex; gap: 8px; background: white; border-radius: 16px;
-    padding: 6px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); width: 100%;
+    display: flex; gap: 8px; background: var(--panel); border-radius: 16px;
+    padding: 6px; box-shadow: 0 2px 12px var(--shadow); width: 100%;
   }
   .tab {
     flex: 1; border: none; background: transparent; border-radius: 12px;
-    padding: 10px; font-size: 0.95rem; font-weight: 600; color: #bbb;
+    padding: 10px; font-size: 0.95rem; font-weight: 600; color: var(--muted);
     cursor: pointer; transition: background 0.15s, color 0.15s;
   }
-  .tab.active { background: #e8734a; color: white; }
+  .tab.active { background: var(--accent); color: white; }
 
-  /* Chart box */
   .chart-box {
-    background: white; border-radius: 20px; padding: 22px 18px 18px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06); width: 100%;
+    background: var(--panel); border-radius: 20px; padding: 22px 18px 18px;
+    box-shadow: 0 2px 12px var(--shadow); width: 100%;
   }
   .chart-title {
-    font-size: 0.82rem; font-weight: 700; color: #bbb;
+    font-size: 0.82rem; font-weight: 700; color: var(--muted);
     text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 18px; text-align: left;
   }
 
-  /* Week bar chart */
   .bar-chart { display: flex; gap: 10px; align-items: flex-end; height: 110px; padding: 0 4px; }
   .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; }
-  .bar-track { flex: 1; width: 100%; background: #f5f0eb; border-radius: 8px; display: flex; align-items: flex-end; overflow: hidden; }
-  .bar-fill { width: 100%; background: #e8734a; border-radius: 8px 8px 0 0; transition: height 0.6s cubic-bezier(0.34,1.56,0.64,1); min-height: 0; }
-  .bar-label { font-size: 0.75rem; color: #bbb; font-weight: 600; }
+  .bar-track { flex: 1; width: 100%; background: var(--panel-inner); border-radius: 8px; display: flex; align-items: flex-end; overflow: hidden; }
+  .bar-fill { width: 100%; background: var(--accent); border-radius: 8px 8px 0 0; transition: height 0.6s cubic-bezier(0.34,1.56,0.64,1); min-height: 0; }
+  .bar-label { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
 
-  /* Donut */
   .donut-row { display: flex; align-items: center; gap: 20px; }
   .donut-svg { width: 110px; height: 110px; flex-shrink: 0; }
-  .donut-pct { font-family: -apple-system, sans-serif; font-size: 18px; font-weight: 800; fill: #1a1a1a; }
-  .donut-sub { font-family: -apple-system, sans-serif; font-size: 9px; fill: #bbb; font-weight: 500; }
+  .donut-pct { font-family: -apple-system, sans-serif; font-size: 18px; font-weight: 800; fill: var(--text); }
+  .donut-sub { font-family: -apple-system, sans-serif; font-size: 9px; fill: var(--muted); font-weight: 500; }
 
   .donut-legend { display: flex; flex-direction: column; gap: 12px; flex: 1; }
   .legend-item { display: flex; align-items: center; gap: 10px; }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .legend-label { font-size: 0.78rem; color: #999; }
-  .legend-val { font-size: 1rem; font-weight: 700; color: #1a1a1a; }
+  .legend-label { font-size: 0.78rem; color: var(--muted); }
+  .legend-val { font-size: 1rem; font-weight: 700; color: var(--text); }
 
-  /* 24h clock */
   .clock-24-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
   .clock-24-svg { width: 200px; height: 200px; }
-  .clock-hour-label { font-family: -apple-system, sans-serif; font-size: 9px; fill: #bbb; font-weight: 600; }
-  .clock-center-big { font-family: -apple-system, sans-serif; font-size: 18px; font-weight: 800; fill: #1a1a1a; }
-  .clock-center-sub { font-family: -apple-system, sans-serif; font-size: 8px; fill: #bbb; }
+  .clock-hour-label { font-family: -apple-system, sans-serif; font-size: 9px; fill: var(--muted); font-weight: 600; }
+  .clock-center-big { font-family: -apple-system, sans-serif; font-size: 18px; font-weight: 800; fill: var(--text); }
+  .clock-center-sub { font-family: -apple-system, sans-serif; font-size: 8px; fill: var(--muted); }
   .clock-legend { display: flex; gap: 20px; }
 
-  /* Score */
   .score-box { display: flex; flex-direction: column; gap: 16px; }
   .score-row { display: flex; align-items: center; gap: 16px; }
   .score-svg { width: 140px; height: 140px; flex-shrink: 0; }
   .score-number { font-family: -apple-system, sans-serif; font-size: 28px; font-weight: 800; }
-  .score-sub { font-family: -apple-system, sans-serif; font-size: 11px; fill: #bbb; }
+  .score-sub { font-family: -apple-system, sans-serif; font-size: 11px; fill: var(--muted); }
   .score-info { flex: 1; display: flex; flex-direction: column; gap: 10px; text-align: left; }
-  .score-label { font-size: 1rem; font-weight: 700; color: #1a1a1a; }
+  .score-label { font-size: 1rem; font-weight: 700; color: var(--text); }
   .score-breakdown { display: flex; flex-direction: column; gap: 6px; }
   .breakdown-row { display: flex; justify-content: space-between; align-items: center; }
-  .breakdown-key { font-size: 0.78rem; color: #999; }
-  .breakdown-val { font-size: 0.82rem; font-weight: 700; color: #1a1a1a; }
+  .breakdown-key { font-size: 0.78rem; color: var(--muted); }
+  .breakdown-val { font-size: 0.82rem; font-weight: 700; color: var(--text); }
   .score-note {
-    font-size: 0.75rem; color: #bbb; line-height: 1.5;
-    border-top: 1px solid #f5f0eb; padding-top: 12px; text-align: left;
+    font-size: 0.75rem; color: var(--muted); line-height: 1.5;
+    border-top: 1px solid var(--border); padding-top: 12px; text-align: left;
   }
 
-  .empty-hint { font-size: 0.88rem; color: #bbb; line-height: 1.6; }
+  .empty-hint { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
 
-  /* Reset */
   .reset-btn {
-    background: transparent; border: 2px solid #eee; color: #bbb;
+    background: transparent; border: 2px solid var(--border); color: var(--muted);
     padding: 12px 32px; border-radius: 50px; font-size: 0.9rem; font-weight: 600;
     cursor: pointer; transition: border-color 0.15s, color 0.15s;
   }
-  .reset-btn:hover { border-color: #e8734a; color: #e8734a; }
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* SVG internals that need explicit colors */
+  :global(#clock-center) { fill: var(--panel); }
 </style>

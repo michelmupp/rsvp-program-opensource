@@ -57,9 +57,9 @@
     }
   });
 
-  $: if (browser) {
-    localStorage.setItem('glimpse-theme', nightMode ? 'dark' : 'light');
-    document.documentElement.classList.toggle("dark", nightMode);
+  $: if (browser && hasInitialized) {
+  localStorage.setItem('glimpse-theme', nightMode ? 'dark' : 'light');
+  document.documentElement.classList.toggle("dark", nightMode);
   }
 
   type Chapter = {
@@ -84,14 +84,20 @@
   onMount(() => {
     if (!browser) return;
 
+    // Dark mode zuerst lesen
+    const globalTheme = localStorage.getItem('glimpse-theme');
+    if (globalTheme === 'dark') nightMode = true;
+    else if (globalTheme === 'light') nightMode = false;
+    else {
+      nightMode = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
+    }
+
     try {
       const raw = localStorage.getItem(SAVE_KEY);
       if (raw) {
         const saved = JSON.parse(raw) as Partial<SavedState>;
-
         if (typeof saved.wpm === "number") wpm = saved.wpm;
         if (typeof saved.skipFrontMatter === "boolean") skipFrontMatter = saved.skipFrontMatter;
-
         if (
           typeof saved.bookId === "string" &&
           typeof saved.chapterIndex === "number" &&
@@ -105,9 +111,8 @@
         }
       }
     } catch {
-      // ignore broken JSON
     } finally {
-      hasInitialized = true; // ✅ always runs
+      hasInitialized = true;
     }
   });
 

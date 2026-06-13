@@ -16,6 +16,11 @@
   let activePreset = '';
 
   onMount(() => {
+    // Dark mode sync
+    const theme = localStorage.getItem('glimpse-theme');
+    if (theme === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+
     try {
       const saved = JSON.parse(localStorage.getItem('pomodoro-settings') || '{}');
       if (saved.focusGoal) focusGoal = saved.focusGoal;
@@ -49,14 +54,6 @@
 </script>
 
 <main>
-  <nav>
-    <button class="nav-btn" on:click={back} aria-label="Back">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M19 12H5M12 5l-7 7 7 7"/>
-      </svg>
-    </button>
-  </nav>
-
   <div class="hero">
     <div class="logo">
       <span class="logo-icon">⚙️</span>
@@ -112,16 +109,6 @@
 </main>
 
 <style>
-  :global(*, *::before, *::after) {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-  :global(body) {
-    background: #fdf8f4;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  }
-
   main {
     min-height: 100vh;
     display: grid;
@@ -129,33 +116,6 @@
     padding: 40px 24px;
     position: relative;
   }
-
-  nav {
-    position: fixed;
-    top: 20px;
-    left: 24px;
-    z-index: 10;
-  }
-
-  .nav-btn {
-    background: white;
-    border: none;
-    border-radius: 14px;
-    width: 44px;
-    height: 44px;
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    color: #555;
-    transition: transform 0.15s, box-shadow 0.15s, color 0.15s;
-  }
-  .nav-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-    color: #e8734a;
-  }
-  .nav-btn svg { width: 20px; height: 20px; }
 
   .hero {
     display: flex;
@@ -177,17 +137,16 @@
   h1 {
     font-size: 2.8rem;
     font-weight: 800;
-    color: #1a1a1a;
+    color: var(--text);
     letter-spacing: -1px;
   }
 
-  /* Sections */
   .section {
-    background: white;
+    background: var(--panel);
     border-radius: 20px;
     padding: 24px 20px;
     width: 100%;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    box-shadow: 0 2px 12px var(--shadow);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -197,20 +156,19 @@
   .section-title {
     font-size: 1rem;
     font-weight: 700;
-    color: #1a1a1a;
+    color: var(--text);
     align-self: flex-start;
   }
 
   .section-sub {
     font-size: 0.85rem;
-    color: #999;
+    color: var(--muted);
     align-self: flex-start;
     text-align: left;
     line-height: 1.5;
     margin-top: -8px;
   }
 
-  /* Goal */
   .goal-row {
     display: flex;
     align-items: center;
@@ -218,20 +176,20 @@
   }
 
   .stepper {
-    background: #f5f0eb;
+    background: var(--panel-inner);
     border: none;
     border-radius: 50%;
     width: 44px;
     height: 44px;
     font-size: 1.4rem;
     font-weight: 700;
-    color: #555;
+    color: var(--muted);
     cursor: pointer;
     transition: background 0.15s, transform 0.1s;
     display: grid;
     place-items: center;
   }
-  .stepper:hover { background: #ede6de; transform: scale(1.08); }
+  .stepper:hover { background: var(--border); transform: scale(1.08); }
   .stepper:active { transform: scale(0.95); }
 
   .goal-display {
@@ -243,13 +201,13 @@
   .goal-number {
     font-size: 2.8rem;
     font-weight: 800;
-    color: #1a1a1a;
+    color: var(--text);
     line-height: 1;
     letter-spacing: -1px;
   }
   .goal-label {
     font-size: 0.8rem;
-    color: #bbb;
+    color: var(--muted);
     font-weight: 500;
   }
 
@@ -264,12 +222,11 @@
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: #eee;
+    background: var(--border);
     transition: background 0.2s;
   }
-  .dot.active { background: #e8734a; }
+  .dot.active { background: var(--accent); }
 
-  /* Presets */
   .presets {
     display: flex;
     flex-direction: column;
@@ -278,7 +235,7 @@
   }
 
   .preset-card {
-    background: #fdf8f4;
+    background: var(--panel-inner);
     border: 2px solid transparent;
     border-radius: 14px;
     padding: 14px 16px;
@@ -292,12 +249,12 @@
     position: relative;
   }
   .preset-card:hover {
-    background: #f5ede4;
+    background: var(--border);
     transform: translateX(2px);
   }
   .preset-card.active {
-    border-color: #e8734a;
-    background: #fff5f0;
+    border-color: var(--accent);
+    background: var(--panel);
   }
 
   .preset-icon { font-size: 1.4rem; flex-shrink: 0; }
@@ -305,15 +262,16 @@
   .preset-name {
     font-size: 0.95rem;
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--text);
     flex: 1;
   }
 
   .preset-time {
     font-size: 0.82rem;
-    color: #aaa;
+    color: var(--muted);
     font-weight: 500;
     white-space: nowrap;
+    margin-right: 24px;
   }
 
   .preset-check {
@@ -321,14 +279,16 @@
     right: 16px;
     top: 50%;
     transform: translateY(-50%);
-    color: #e8734a;
+    color: var(--accent);
     font-weight: 800;
     font-size: 1rem;
+    line-height: 1;
+    width: 20px;
+    text-align: center;
   }
 
-  /* CTA */
   .cta {
-    background: #e8734a;
+    background: var(--accent);
     color: white;
     border: none;
     padding: 18px 48px;
@@ -337,13 +297,13 @@
     font-weight: 700;
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.15s;
-    box-shadow: 0 4px 20px rgba(232, 115, 74, 0.35);
+    box-shadow: 0 4px 20px var(--accent-shadow);
     width: 100%;
     max-width: 280px;
   }
   .cta:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 28px rgba(232, 115, 74, 0.45);
+    box-shadow: 0 8px 28px var(--accent-shadow);
   }
   .cta:active { transform: translateY(0); }
 </style>

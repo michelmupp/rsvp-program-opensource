@@ -2,8 +2,14 @@
   import { onDestroy, onMount } from 'svelte';
   import { goto } from '$app/navigation';
 
+  onMount(() => {
+    const theme = localStorage.getItem('glimpse-theme');
+    if (theme === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  });
+
   // ── Players ────────────────────────────────────────────────
-  let players: string[] = ['Alex', 'Sam', 'Jordan', 'Taylor'];
+  let players: string[] = ['Michel', 'Jim', 'Nicolas', 'Jang'];
   let editingIndex: number | null = null;
   let editingValue = '';
 
@@ -280,15 +286,6 @@
 {/if}
 
 <main>
-  <!-- Back button -->
-  <nav>
-    <button class="nav-btn" on:click={() => goto('/')} aria-label="Zurück">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M19 12H5M12 5l-7 7 7 7"/>
-      </svg>
-    </button>
-  </nav>
-
   <div class="hero">
     <div class="header">
       <span class="logo-icon">🎡</span>
@@ -400,12 +397,6 @@
 </main>
 
 <style>
-  :global(*, *::before, *::after) { box-sizing: border-box; margin: 0; padding: 0; }
-  :global(body) {
-    background: #fdf8f4;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  }
-
   .confetti-canvas {
     position: fixed;
     inset: 0;
@@ -413,7 +404,6 @@
     z-index: 200;
   }
 
-  /* ── Result overlay ── */
   .result-overlay {
     position: fixed;
     inset: 0;
@@ -431,11 +421,11 @@
   }
 
   .result-card {
-    background: white;
+    background: var(--panel);
     border-radius: 32px;
     padding: 48px 40px;
     text-align: center;
-    box-shadow: 0 20px 80px rgba(0,0,0,0.2);
+    box-shadow: 0 20px 80px var(--shadow);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -462,7 +452,7 @@
 
   .result-label {
     font-size: 0.9rem;
-    color: #999;
+    color: var(--muted);
     font-weight: 600;
     letter-spacing: 0.3px;
   }
@@ -470,14 +460,14 @@
   .result-name {
     font-size: 2.8rem;
     font-weight: 900;
-    color: #1a1a1a;
+    color: var(--text);
     letter-spacing: -1.5px;
     line-height: 1;
   }
 
   .result-close {
     margin-top: 12px;
-    background: #e8734a;
+    background: var(--accent);
     color: white;
     border: none;
     padding: 14px 36px;
@@ -485,16 +475,15 @@
     font-size: 0.95rem;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 4px 20px rgba(232,115,74,0.35);
+    box-shadow: 0 4px 20px var(--accent-shadow);
     transition: transform 0.15s, box-shadow 0.15s;
   }
 
   .result-close:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 28px rgba(232,115,74,0.45);
+    box-shadow: 0 8px 28px var(--accent-shadow);
   }
 
-  /* ── Layout ── */
   main {
     min-height: 100vh;
     display: grid;
@@ -502,35 +491,6 @@
     padding: 72px 24px 40px;
     position: relative;
   }
-
-  nav {
-    position: fixed;
-    top: 20px;
-    left: 24px;
-    z-index: 10;
-  }
-
-  .nav-btn {
-    background: white;
-    border: none;
-    border-radius: 14px;
-    width: 44px;
-    height: 44px;
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    color: #555;
-    transition: transform 0.15s, box-shadow 0.15s, color 0.15s;
-  }
-
-  .nav-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-    color: #e8734a;
-  }
-
-  .nav-btn svg { width: 20px; height: 20px; }
 
   .hero {
     display: flex;
@@ -542,7 +502,6 @@
     text-align: center;
   }
 
-  /* ── Header ── */
   .header {
     display: flex;
     flex-direction: column;
@@ -555,17 +514,16 @@
   h1 {
     font-size: 2.8rem;
     font-weight: 900;
-    color: #1a1a1a;
+    color: var(--text);
     letter-spacing: -1.5px;
   }
 
   .tagline {
     font-size: 0.95rem;
-    color: #aaa;
+    color: var(--muted);
     font-weight: 500;
   }
 
-  /* ── Wheel wrapper ── */
   .wheel-wrap {
     position: relative;
     width: min(80vw, 360px);
@@ -579,7 +537,7 @@
     top: -16px;
     z-index: 10;
     font-size: 1.8rem;
-    color: #1a1a1a;
+    color: var(--text);
     line-height: 1;
     filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25));
     pointer-events: none;
@@ -588,7 +546,7 @@
   .wheel {
     width: 100%;
     cursor: grab;
-    filter: drop-shadow(0 8px 32px rgba(0,0,0,0.12));
+    filter: drop-shadow(0 8px 32px var(--shadow));
     user-select: none;
     touch-action: none;
     will-change: transform;
@@ -597,22 +555,20 @@
   .wheel:active { cursor: grabbing; }
   .wheel.spinning { cursor: default; }
 
-  /* ── Hint ── */
   .hint {
     font-size: 0.88rem;
-    color: #bbb;
+    color: var(--muted);
     font-weight: 600;
     letter-spacing: 0.2px;
     height: 20px;
   }
 
-  /* ── Players box ── */
   .players-box {
-    background: white;
+    background: var(--panel);
     border-radius: 24px;
     padding: 20px;
     width: 100%;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+    box-shadow: 0 2px 16px var(--shadow);
     display: flex;
     flex-direction: column;
     gap: 14px;
@@ -627,13 +583,13 @@
   .players-title {
     font-size: 0.82rem;
     font-weight: 700;
-    color: #bbb;
+    color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.7px;
   }
 
   .add-btn {
-    background: #e8734a;
+    background: var(--accent);
     color: white;
     border: none;
     padding: 8px 18px;
@@ -642,12 +598,12 @@
     font-weight: 700;
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.15s;
-    box-shadow: 0 3px 12px rgba(232,115,74,0.3);
+    box-shadow: 0 3px 12px var(--accent-shadow);
   }
 
   .add-btn:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 5px 18px rgba(232,115,74,0.4);
+    box-shadow: 0 5px 18px var(--accent-shadow);
   }
 
   .add-btn:disabled {
@@ -666,7 +622,7 @@
     align-items: center;
     gap: 10px;
     padding: 10px 14px;
-    background: #fdf8f4;
+    background: var(--panel-inner);
     border-radius: 14px;
     transition: background 0.15s;
   }
@@ -682,24 +638,24 @@
     flex: 1;
     font-size: 0.95rem;
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--text);
     text-align: left;
     cursor: pointer;
     padding: 2px 0;
   }
 
   .player-name:hover {
-    color: #e8734a;
+    color: var(--accent);
   }
 
   .player-input {
     flex: 1;
     font-size: 0.95rem;
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--text);
     border: none;
     background: transparent;
-    outline: 2px solid #e8734a;
+    outline: 2px solid var(--accent);
     border-radius: 8px;
     padding: 2px 6px;
   }
@@ -707,7 +663,7 @@
   .remove-btn {
     background: none;
     border: none;
-    color: #ccc;
+    color: var(--muted);
     font-size: 0.8rem;
     cursor: pointer;
     padding: 4px 6px;
@@ -717,7 +673,7 @@
   }
 
   .remove-btn:hover:not(:disabled) {
-    color: #e8734a;
+    color: var(--accent);
     background: rgba(232,115,74,0.08);
   }
 
