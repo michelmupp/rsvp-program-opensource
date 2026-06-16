@@ -461,6 +461,23 @@
     pauseWindow = getThreeSentenceWindow(index, words);
   }
 
+  function forwardSentence() {
+    pause();
+
+    if (!words.length) return;
+
+    const current = getSentenceBounds(index, words);
+
+    if (current.end >= words.length - 1) {
+      index = words.length - 1;
+    } else {
+      const next = getSentenceBounds(current.end + 1, words);
+      index = next.start;
+    }
+
+    pauseWindow = getThreeSentenceWindow(index, words);
+  }
+
   let lastWpm = wpm;
 
   $: if (isPlaying && !isStarting && wpm !== lastWpm) {
@@ -529,6 +546,26 @@
     const s = sec % 60;
     return `${m}:${String(s).padStart(2, "0")}`;
   }
+
+  let showPositionInput = false;
+  let positionInput = '';
+
+  function jumpToPosition() {
+    const num = parseInt(positionInput);
+    if (isNaN(num) || num < 1) return;
+    const target = Math.min(num - 1, words.length - 1);
+    pause();
+    index = target;
+    sessionStartIndex = target;
+    pauseWindow = getThreeSentenceWindow(index, words);
+    showPositionInput = false;
+    positionInput = '';
+  }
+
+  function onPositionKey(e: KeyboardEvent) {
+    if (e.key === 'Enter') jumpToPosition();
+    if (e.key === 'Escape') { showPositionInput = false; positionInput = ''; }
+  }
 </script>
 
 <main class="wrap" class:dark={nightMode}>
@@ -540,6 +577,9 @@
     <span class="meta-left">
       {currentWordNumber} / {totalWords}
     </span>
+    <span class="meta-center">
+      {#if bookTitle}{bookTitle}{/if}
+    </span>
     <span class="meta-right">
       {formatTime(remainingSeconds)} remaining
     </span>
@@ -548,6 +588,35 @@
   <button class="stats-btn" on:click={() => goto('/reader/stats')} aria-label="Statistiken">
     📖
   </button>
+
+  <button class="position-btn" on:click={() => { showPositionInput = !showPositionInput; positionInput = String(currentWordNumber); }} aria-label="Position">
+    #
+  </button>
+
+  {#if showPositionInput}
+    <div class="position-overlay" on:click={() => { showPositionInput = false; positionInput = ''; }}>
+      <div class="position-card" on:click|stopPropagation>
+        <p class="position-title">Jump to word</p>
+        <p class="position-sub">Chapter has {totalWords} words</p>
+        <div class="position-row">
+          <input
+            class="position-input"
+            type="number"
+            min="1"
+            max={totalWords}
+            bind:value={positionInput}
+            on:keydown={onPositionKey}
+            autofocus
+          />
+          <span class="position-of">/ {totalWords}</span>
+        </div>
+        <button class="position-go" on:click={jumpToPosition}>
+          Go
+        </button>
+      </div>
+    </div>
+  {/if}
+
   <section class="display" 
   aria-live="polite" 
   aria-label="RSVP word display"
@@ -592,57 +661,51 @@
   </section>
 
   <section class="top-bar" aria-label="EPUB loader">
-  <div class="top-row">
-    <div class="title">
-      {#if bookTitle}
-        <strong>{bookTitle}</strong>
-      {:else}
-        <strong>EPUB RSVP Reader</strong>
+    <div class="top-row">
+      <label class="upload">
+        <input type="file" accept=".epub" on:change={onPickEpub} />
+        {#if isLoadingEpub}
+          Loading…
+        {:else}
+          Upload EPUB
+        {/if}
+      </label>
+
+      {#if chapters.length > 0}
+        <label class="checkbox">
+          <input type="checkbox" bind:checked={skipFrontMatter} />
+          Skip TOC
+        </label>
       {/if}
     </div>
 
     {#if chapters.length > 0}
-  <div class="chapter-controls">
-    <label class="checkbox">
-      <input type="checkbox" bind:checked={skipFrontMatter} />
-      Skip TOC / front-matter
-    </label>
+      <div class="chapter-row">
+        <label class="select">
+          <span>Chapter</span>
+          <select
+            bind:value={selectedChapterIndex}
+            on:change={() => { restart(); }}
+          >
+            {#each chapters as c, i}
+              {#if !skipFrontMatter || !c.skip}
+                <option value={i}>
+                  {c.skip && !skipFrontMatter ? "(front) " : ""}{c.title}
+                </option>
+              {/if}
+            {/each}
+          </select>
+        </label>
+      </div>
+    {/if}
 
-    <label class="select">
-      <span>Chapter</span>
-      <select
-        bind:value={selectedChapterIndex}
-        on:change={() => { restart(); }}
-      >
-        {#each chapters as c, i}
-          {#if !skipFrontMatter || !c.skip}
-            <option value={i}>
-              {c.skip && !skipFrontMatter ? "(front) " : ""}{c.title}
-            </option>
-          {/if}
-        {/each}
-      </select>
-    </label>
-  </div>
-  {/if}
-
-    <label class="upload">
-      <input type="file" accept=".epub" on:change={onPickEpub} />
-      {#if isLoadingEpub}
-        Loading…
-      {:else}
-        Upload EPUB
-      {/if}
-    </label>
-  </div>
-
-  {#if epubError}
-    <div class="error" role="alert">{epubError}</div>
-  {/if}
+    {#if epubError}
+      <div class="error" role="alert">{epubError}</div>
+    {/if}
   </section>
 
   <section class="controls" aria-label="Playback controls">
-    <button on:click={restart}>Restart</button>
+    <button on:click={backSentence} disabled={index === 0}>←</button>
 
     {#if isPlaying || isStarting}
       <button on:click={pause}>Pause</button>
@@ -650,10 +713,9 @@
       <button on:click={start}>Play</button>
     {/if}
 
-    <button on:click={backSentence} disabled={index === 0}>
-  Back
-</button>
+    <button on:click={forwardSentence} disabled={index >= words.length - 1}>→</button>
   </section>
+
   <section class="bottom-bar" aria-label="Reading speed control">
     <div class="speed-row">
       <span class="label">Speed</span>
@@ -725,8 +787,21 @@
   .top-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 12px;
+  }
+
+  .chapter-row {
+    display: flex;
+    align-items: center;
+  }
+
+  .chapter-row .select {
+    width: 100%;
+  }
+
+  .chapter-row select {
+    width: 100%;
+    flex: 1;
   }
 
   .title strong {
@@ -953,5 +1028,140 @@
   .stats-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  }
+
+  .position-btn {
+    position: fixed;
+    top: 20px;
+    left: 76px;
+    z-index: 1000;
+    background: var(--panel);
+    border: none;
+    border-radius: 14px;
+    width: 44px;
+    height: 44px;
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s, box-shadow 0.15s;
+    color: var(--muted);
+    pointer-events: all;
+    padding: 0;
+  }
+
+  .position-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    color: var(--accent);
+  }
+
+  .position-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(4px);
+    display: grid;
+    place-items: center;
+    z-index: 2000;
+    animation: fadeIn 0.15s ease;
+  }
+
+  .position-card {
+    background: var(--panel);
+    border-radius: 24px;
+    padding: 32px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 20px 60px var(--shadow);
+    width: 280px;
+    animation: popIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0.85); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+
+  .position-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+
+  .position-sub {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-top: -8px;
+  }
+
+  .position-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .position-input {
+    flex: 1;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    background: var(--panel-inner);
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+
+  .position-input:focus {
+    border-color: var(--accent);
+  }
+
+  .position-of {
+    font-size: 0.85rem;
+    color: var(--muted);
+    white-space: nowrap;
+    font-weight: 600;
+  }
+
+  .position-go {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 50px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 16px var(--accent-shadow);
+    transition: transform 0.15s, box-shadow 0.15s;
+    width: 100%;
+  }
+
+  .position-go:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px var(--accent-shadow);
+  }
+
+  .meta-center {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    opacity: 0.7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 120px;
+    text-align: center;
   }
 </style>
