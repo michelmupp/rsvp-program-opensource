@@ -7,8 +7,9 @@
 
   const SAVE_KEY = "rsvp_state_v1";
 
+  // Dauer von 1500ms auf 250ms reduziert, damit es bei schnellem Lesen nicht flackert
   const [send, receive] = crossfade({
-    duration: 350,
+    duration: 250,
     easing: quintOut
   });
 
@@ -21,7 +22,7 @@
   let isPlaying = false;
   let wpm = 300; // words per minute
   let selectedChapterIndex = 0;
-  let skipFrontMatter = true; // user can toggle
+  let skipFrontMatter = true;
   let index = 0;
   let currentBookId: string | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
@@ -31,31 +32,16 @@
   let isStarting = false;
   const startDelayMs = 350;
   let startTimeout: ReturnType<typeof setTimeout> | null = null;
-  let startAnimKey = 0;
   let hasInitialized = false;
 
   let nightMode = false;
+  let positionInput: number | string = '';
 
   function safeLoad(key: string): string | null {
     try { return localStorage.getItem(key); } catch { return null; }
   }
   function safeSave(key: string, value: string) {
     try { localStorage.setItem(key, value); } catch {}
-  }
-
-  onMount(() => {
-    if (!browser) return;
-    const globalTheme = localStorage.getItem('glimpse-theme');
-    if (globalTheme === 'dark') nightMode = true;
-    else if (globalTheme === 'light') nightMode = false;
-    else {
-      nightMode = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
-    }
-  });
-
-  $: if (browser && hasInitialized) {
-    localStorage.setItem('glimpse-theme', nightMode ? 'dark' : 'light');
-    document.documentElement.classList.toggle("dark", nightMode);
   }
 
   type Chapter = {
@@ -77,9 +63,17 @@
     wordIndex: number;
   };
 
+  let pendingRestore: {
+    chapterIndex: number;
+    wordIndex: number;
+    bookId: string;
+  } | null = null;
+
+  // --- Zusammengeführtes onMount ---
   onMount(() => {
     if (!browser) return;
 
+    // Theme laden
     const globalTheme = localStorage.getItem('glimpse-theme');
     if (globalTheme === 'dark') nightMode = true;
     else if (globalTheme === 'light') nightMode = false;
@@ -87,6 +81,7 @@
       nightMode = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
     }
 
+    // State laden
     try {
       const raw = localStorage.getItem(SAVE_KEY);
       if (raw) {
@@ -111,11 +106,10 @@
     }
   });
 
-  let pendingRestore: {
-    chapterIndex: number;
-    wordIndex: number;
-    bookId: string;
-  } | null = null;
+  $: if (browser && hasInitialized) {
+    localStorage.setItem('glimpse-theme', nightMode ? 'dark' : 'light');
+    document.documentElement.classList.toggle("dark", nightMode);
+  }
 
   $: if (chapters.length > 0) {
     const chap = chapters[selectedChapterIndex];
@@ -164,25 +158,20 @@
 
   function getThreeSentenceWindow(idx: number, words: string[]) {
     const cur = getSentenceBounds(idx, words);
-
     let start = cur.start;
     if (cur.start > 0) {
       const prev = getSentenceBounds(cur.start - 1, words);
       start = prev.start;
     }
-
     let end = cur.end;
     if (cur.end < words.length - 1) {
       const next = getSentenceBounds(cur.end + 1, words);
       end = next.end;
     }
-
     return { start, end };
   }
 
-  let pauseWindow:
-    | { start: number; end: number }
-    | null = null;
+  let pauseWindow: { start: number; end: number } | null = null;
 
   $: if (!isPlaying) {
     pauseWindow = getThreeSentenceWindow(index, words);
@@ -192,7 +181,6 @@
     if (!browser) throw new Error("EPUB loading is only available in the browser");
 
     const { default: JSZip } = await import("jszip");
-
     const buf = await file.arrayBuffer();
     const zip = await JSZip.loadAsync(buf);
 
@@ -217,10 +205,7 @@
       opfDoc.querySelector("title")?.textContent ||
       null;
 
-    const manifest = new Map<
-      string,
-      { href: string; mediaType?: string; properties?: string }
-    >();
+    const manifest = new Map<string, { href: string; mediaType?: string; properties?: string }>();
 
     opfDoc.querySelectorAll("manifest > item").forEach((item) => {
       const id = item.getAttribute("id");
@@ -249,7 +234,6 @@
     for (const idref of spineIdrefs) {
       const item = manifest.get(idref);
       if (!item) continue;
-
       if ((item.properties || "").split(/\s+/).includes("nav")) continue;
 
       const internalPath = joinPath(opfBase, item.href);
@@ -275,7 +259,6 @@
     }
 
     if (outChapters.length === 0) throw new Error("Could not extract chapters from EPUB");
-
     return { title, chapters: outChapters };
   }
 
@@ -291,7 +274,6 @@
     try {
       const { title, chapters: loaded } = await loadEpubFile(file);
       bookTitle = title;
-
       chapters = loaded;
 
       if (skipFrontMatter) {
@@ -305,18 +287,12 @@
         const chap = Math.max(0, Math.min(pendingRestore.chapterIndex, chapters.length - 1));
         selectedChapterIndex = chap;
 
-        const wi = Math.max(
-          0,
-          Math.min(pendingRestore.wordIndex, chapters[chap].words.length - 1)
-        );
-
+        const wi = Math.max(0, Math.min(pendingRestore.wordIndex, chapters[chap].words.length - 1));
         pause();
         index = wi;
         pauseWindow = getThreeSentenceWindow(index, chapters[chap].words);
-
         pendingRestore = null;
       } else {
-        selectedChapterIndex = selectedChapterIndex;
         restart();
       }
     } catch (err: any) {
@@ -331,16 +307,8 @@
     const t = (title || "").toLowerCase();
     const h = (href || "").toLowerCase();
 
-    const hrefBad =
-      /toc|nav|contents|content|cover|copyright|titlepage|title-page|halftitle|half-title|frontmatter|front-matter|preface|foreword|introduction|dedication|acknowledg|colophon|imprint|about/i.test(
-        h
-      );
-
-    const titleBad =
-      /table of contents|contents|toc|cover|copyright|title page|preface|foreword|introduction|dedication|acknowledg|colophon|imprint|about/i.test(
-        t
-      );
-
+    const hrefBad = /toc|nav|contents|content|cover|copyright|titlepage|title-page|halftitle|half-title|frontmatter|front-matter|preface|foreword|introduction|dedication|acknowledg|colophon|imprint|about/i.test(h);
+    const titleBad = /table of contents|contents|toc|cover|copyright|title page|preface|foreword|introduction|dedication|acknowledg|colophon|imprint|about/i.test(t);
     const wordCount = splitIntoTokens(text).length;
     const tooShort = wordCount < 120;
 
@@ -349,15 +317,10 @@
 
   function pickChapterTitleFromHtml(html: string) {
     const doc = new DOMParser().parseFromString(html, "text/html");
-    const h =
-      doc.querySelector("h1")?.textContent?.trim() ||
-      doc.querySelector("h2")?.textContent?.trim() ||
-      doc.querySelector("title")?.textContent?.trim() ||
-      "";
+    const h = doc.querySelector("h1")?.textContent?.trim() || doc.querySelector("h2")?.textContent?.trim() || doc.querySelector("title")?.textContent?.trim() || "";
     return normalizeWhitespace(h);
   }
 
-  // ── Token splitting: trenne Bindestrich-Wörter ──
   function splitIntoTokens(text: string): string[] {
     return text
       .split(/\s+/)
@@ -391,13 +354,9 @@
 
   function start() {
     if (isPlaying || isStarting) return;
-
     pauseWindow = null;
-
     if (timer) clearTimeout(timer);
     timer = null;
-
-    startAnimKey += 1;
     isStarting = true;
 
     startTimeout = setTimeout(() => {
@@ -406,6 +365,8 @@
       scheduleNext();
     }, startDelayMs);
   }
+
+  let sessionStartIndex = 0;
 
   function pause() {
     if (startTimeout) clearTimeout(startTimeout);
@@ -421,10 +382,10 @@
     timer = null;
 
     pauseWindow = getThreeSentenceWindow(index, words);
+    scrollCurrentWordIntoView();
   }
 
   let holdActive = false;
-
   function holdStart(e: Event) {
     e.preventDefault();
     holdActive = true;
@@ -446,42 +407,28 @@
 
   function backSentence() {
     pause();
-
     if (!words.length) return;
-
     const current = getSentenceBounds(index, words);
-
     if (current.start === 0) {
       index = 0;
     } else {
       const previous = getSentenceBounds(current.start - 1, words);
       index = previous.start;
     }
-
     pauseWindow = getThreeSentenceWindow(index, words);
   }
 
   function forwardSentence() {
     pause();
-
     if (!words.length) return;
-
     const current = getSentenceBounds(index, words);
-
     if (current.end >= words.length - 1) {
       index = words.length - 1;
     } else {
       const next = getSentenceBounds(current.end + 1, words);
       index = next.start;
     }
-
     pauseWindow = getThreeSentenceWindow(index, words);
-  }
-
-  let lastWpm = wpm;
-
-  $: if (isPlaying && !isStarting && wpm !== lastWpm) {
-    lastWpm = wpm;
   }
 
   function getORPLetterRank(letterCount: number): number {
@@ -512,8 +459,6 @@
 
   onDestroy(() => pause());
 
-  let sessionStartIndex = 0;
-
   function saveReadingWords(wordsRead: number) {
     if (wordsRead <= 0) return;
     try {
@@ -531,13 +476,11 @@
 
   $: if (browser && hasInitialized) {
     const state: Partial<SavedState> = { wpm, skipFrontMatter };
-
     if (currentBookId) {
       state.bookId = currentBookId;
       state.chapterIndex = selectedChapterIndex;
       state.wordIndex = index;
     }
-
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   }
 
@@ -548,10 +491,9 @@
   }
 
   let showPositionInput = false;
-  let positionInput = '';
 
   function jumpToPosition() {
-    const num = parseInt(positionInput);
+    const num = parseInt(positionInput as string);
     if (isNaN(num) || num < 1) return;
     const target = Math.min(num - 1, words.length - 1);
     pause();
@@ -566,30 +508,30 @@
     if (e.key === 'Enter') jumpToPosition();
     if (e.key === 'Escape') { showPositionInput = false; positionInput = ''; }
   }
+
+  function scrollCurrentWordIntoView() {
+    if (!browser) return;
+    setTimeout(() => {
+      const el = document.querySelector('.current-word');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  }
 </script>
 
 <main class="wrap" class:dark={nightMode}>
   <div class="top-progress">
-    <div class="top-progress-fill" style={`width:${progressPct}%`}>
-    </div>
+    <div class="top-progress-fill" style={`width:${progressPct}%`}></div>
   </div>
   <div class="top-progress-meta">
-    <span class="meta-left">
-      {currentWordNumber} / {totalWords}
-    </span>
-    <span class="meta-center">
-      {#if bookTitle}{bookTitle}{/if}
-    </span>
-    <span class="meta-right">
-      {formatTime(remainingSeconds)} remaining
-    </span>
+    <span class="meta-left">{currentWordNumber} / {totalWords}</span>
+    <span class="meta-center">{#if bookTitle}{bookTitle}{/if}</span>
+    <span class="meta-right">{formatTime(remainingSeconds)} remaining</span>
   </div>
 
-  <button class="stats-btn" on:click={() => goto('/reader/stats')} aria-label="Statistiken">
-    📖
-  </button>
+  <!-- Semantische Links statt Buttons für Navigation verwendet -->
+  <a href="/reader/stats" class="stats-btn" aria-label="Statistiken">📖</a>
 
-  <button class="position-btn" on:click={() => { showPositionInput = !showPositionInput; positionInput = String(currentWordNumber); }} aria-label="Position">
+  <button type="button" class="position-btn" on:click={() => { showPositionInput = !showPositionInput; positionInput = String(currentWordNumber); }} aria-label="Position">
     #
   </button>
 
@@ -610,65 +552,47 @@
           />
           <span class="position-of">/ {totalWords}</span>
         </div>
-        <button class="position-go" on:click={jumpToPosition}>
-          Go
-        </button>
+        <button type="button" class="position-go" on:click={jumpToPosition}>Go</button>
       </div>
     </div>
   {/if}
 
   <section class="display" 
-  aria-live="polite" 
-  aria-label="RSVP word display"
-  on:mousedown={holdStart}
-  on:mouseup={holdEnd}
-  on:mouseleave={holdEnd}
-  on:touchstart={holdStart}
-  on:touchend={holdEnd}
-  on:touchcancel={holdEnd}>
-  {#if isStarting}
-  <div class="word starting" in:receive={"rsvp-word"}>
-    <span class="left">{parts.left}</span>
-    <span class="center">{parts.center}</span>
-    <span class="right">{parts.right}</span>
-  </div>
-
-  {:else if isPlaying}
-    <div class="word">
-      <span class="left">{parts.left}</span>
-      <span class="center">{parts.center}</span>
-      <span class="right">{parts.right}</span>
-    </div>
-
-  {:else}
-  {#if pauseWindow}
-    <div class="sentence paused-view">
-      {#each words.slice(pauseWindow.start, pauseWindow.end + 1) as word, i}
-        {@const absoluteIndex = pauseWindow.start + i}
-        {#if absoluteIndex === index}
-          <span class="pause-word current-word" out:send={"rsvp-word"}>
-            {word + " "}
-          </span>
-        {:else}
-          <span class="pause-word">
-            {word + " "}
-          </span>
-        {/if}
-      {/each}
-    </div>
-  {/if}
-  {/if}
+    aria-live="polite" 
+    aria-label="RSVP word display"
+    on:mousedown={holdStart}
+    on:mouseup={holdEnd}
+    on:mouseleave={holdEnd}
+    on:touchstart={holdStart}
+    on:touchend={holdEnd}
+    on:touchcancel={holdEnd}>
+    {#if isPlaying || isStarting}
+      <div class="word" in:receive={{key: "rsvp-word"}} out:send={{key: "rsvp-word"}}>
+        <span class="left">{parts.left}</span>
+        <span class="center">{parts.center}</span>
+        <span class="right">{parts.right}</span>
+      </div>
+    {:else}
+      {#if pauseWindow}
+        <div class="sentence paused-view" in:receive={{key: "rsvp-word"}} out:send={{key: "rsvp-word"}}>
+          {#each words.slice(pauseWindow.start, pauseWindow.end + 1) as word, i}
+            {@const absoluteIndex = pauseWindow.start + i}
+            {#if absoluteIndex === index}
+              <span class="pause-word current-word">{word + " "}</span>
+            {:else}
+              <span class="pause-word">{word + " "}</span>
+            {/if}
+          {/each}
+        </div>
+      {/if}
+    {/if}
   </section>
 
   <section class="top-bar" aria-label="EPUB loader">
     <div class="top-row">
       <label class="upload">
         <input type="file" accept=".epub" on:change={onPickEpub} />
-        {#if isLoadingEpub}
-          Loading…
-        {:else}
-          Upload EPUB
-        {/if}
+        {#if isLoadingEpub}Loading…{:else}Upload EPUB{/if}
       </label>
 
       {#if chapters.length > 0}
@@ -683,10 +607,7 @@
       <div class="chapter-row">
         <label class="select">
           <span>Chapter</span>
-          <select
-            bind:value={selectedChapterIndex}
-            on:change={() => { restart(); }}
-          >
+          <select bind:value={selectedChapterIndex} on:change={() => { restart(); }}>
             {#each chapters as c, i}
               {#if !skipFrontMatter || !c.skip}
                 <option value={i}>
@@ -705,15 +626,15 @@
   </section>
 
   <section class="controls" aria-label="Playback controls">
-    <button on:click={backSentence} disabled={index === 0}>←</button>
+    <button type="button" on:click={backSentence} disabled={index === 0}>←</button>
 
     {#if isPlaying || isStarting}
-      <button on:click={pause}>Pause</button>
+      <button type="button" on:click={pause}>Pause</button>
     {:else}
-      <button on:click={start}>Play</button>
+      <button type="button" on:click={start}>Play</button>
     {/if}
 
-    <button on:click={forwardSentence} disabled={index >= words.length - 1}>→</button>
+    <button type="button" on:click={forwardSentence} disabled={index >= words.length - 1}>→</button>
   </section>
 
   <section class="bottom-bar" aria-label="Reading speed control">
@@ -721,15 +642,7 @@
       <span class="label">Speed</span>
       <span class="value">{wpm} WPM</span>
     </div>
-
-    <input
-      type="range"
-      min="100"
-      max="1000"
-      step="25"
-      bind:value={wpm}
-      aria-label="Words per minute"
-    />
+    <input type="range" min="100" max="1000" step="25" bind:value={wpm} aria-label="Words per minute" />
   </section>
 </main>
 
@@ -749,419 +662,175 @@
 
   /* ── Progress bar ── */
   .top-progress {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 3px;
-    background: var(--border);
-    z-index: 9999;
-    pointer-events: all;
+    position: fixed; top: 0; left: 0; width: 100%; height: 3px;
+    background: var(--border); z-index: 9999; pointer-events: all;
   }
-
   .top-progress-fill {
-    height: 100%;
-    width: 0%;
-    background: var(--accent);
-    transition: width 120ms linear;
-    border-radius: 0 2px 2px 0;
+    height: 100%; width: 0%; background: var(--accent);
+    transition: width 120ms linear; border-radius: 0 2px 2px 0;
   }
-
   .top-progress-meta {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 4px 0;
-    font-size: 0.85rem;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    color: var(--muted);
-    pointer-events: none;
+    display: flex; justify-content: space-between; padding: 8px 4px 0;
+    font-size: 0.85rem; font-weight: 600; font-variant-numeric: tabular-nums;
+    color: var(--muted); pointer-events: none;
   }
 
   /* ── Top bar ── */
-  .top-bar {
-    display: grid;
-    gap: 10px;
-  }
+  .top-bar { display: grid; gap: 10px; }
+  .top-row { display: flex; align-items: center; gap: 12px; }
+  .chapter-row { display: flex; align-items: center; }
+  .chapter-row .select { width: 100%; }
+  .chapter-row select { width: 100%; flex: 1; }
 
-  .top-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .chapter-row {
-    display: flex;
-    align-items: center;
-  }
-
-  .chapter-row .select {
-    width: 100%;
-  }
-
-  .chapter-row select {
-    width: 100%;
-    flex: 1;
-  }
-
-  .title strong {
-    font-size: 1.1rem;
-    font-weight: 800;
-    letter-spacing: -0.3px;
-    color: var(--text);
-  }
-
-  /* ── Upload button — pill style like landing CTA ── */
+  /* ── Upload button ── */
   .upload {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    border-radius: 50px;
-    border: none;
-    background: var(--accent);
-    color: #fff;
-    font-weight: 700;
-    font-size: 0.9rem;
-    cursor: pointer;
-    user-select: none;
-    box-shadow: 0 4px 16px var(--accent-shadow);
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border-radius: 50px; border: none;
+    background: var(--accent); color: #fff; font-weight: 700; font-size: 0.9rem;
+    cursor: pointer; user-select: none; box-shadow: 0 4px 16px var(--accent-shadow);
     transition: transform 0.15s, box-shadow 0.15s;
   }
-
-  .upload:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 22px var(--accent-shadow);
-  }
-
-  .upload input {
-    display: none;
-  }
+  .upload:hover { transform: translateY(-1px); box-shadow: 0 6px 22px var(--accent-shadow); }
+  .upload input { display: none; }
 
   /* ── Chapter controls ── */
-  .chapter-controls {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
   .checkbox {
-    display: inline-flex;
-    gap: 8px;
-    align-items: center;
-    padding: 8px 14px;
-    border-radius: 50px;
-    border: 1px solid var(--border);
-    background: var(--panel);
-    color: var(--text);
-    font-size: 0.875rem;
+    display: inline-flex; gap: 8px; align-items: center;
+    padding: 8px 14px; border-radius: 50px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); font-size: 0.875rem;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   }
-
   .select {
-    display: inline-flex;
-    gap: 8px;
-    align-items: center;
-    font-size: 0.875rem;
-    color: var(--muted);
+    display: inline-flex; gap: 8px; align-items: center;
+    font-size: 0.875rem; color: var(--muted);
   }
-
   select {
-    padding: 8px 14px;
-    border-radius: 50px;
-    border: 1px solid var(--border);
-    background: var(--panel);
-    color: var(--text);
-    font-size: 0.875rem;
+    padding: 8px 14px; border-radius: 50px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); font-size: 0.875rem;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   }
 
   /* ── Error ── */
   .error {
-    padding: 10px 14px;
-    border-radius: 16px;
+    padding: 10px 14px; border-radius: 16px;
     border: 1px solid rgba(232, 115, 74, 0.35);
     background: rgba(232, 115, 74, 0.08);
-    font-size: 0.9rem;
-    color: var(--accent);
+    font-size: 0.9rem; color: var(--accent);
   }
 
   /* ── Word display ── */
   .display {
-    display: grid;
-    place-items: center;
-    border-radius: 24px;
-    border: 1px solid var(--border);
-    background: var(--panel);
+    display: grid; place-items: center; border-radius: 24px;
+    border: 1px solid var(--border); background: var(--panel);
     box-shadow: 0 4px 24px rgba(0,0,0,0.06);
-    -webkit-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
-    touch-action: manipulation;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none; touch-action: manipulation;
   }
-
   .word {
-    font-size: clamp(32px, 6vw, 72px);
-    font-weight: 800;
+    font-size: clamp(32px, 6vw, 72px); font-weight: 800;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    display: grid;
-    grid-template-columns: 1fr 1ch 1fr;
-    width: 100%;
-    align-items: baseline;
+    display: grid; grid-template-columns: 1fr 1ch 1fr; width: 100%; align-items: baseline;
   }
-
   .left   { justify-self: end;    white-space: pre; }
   .center { justify-self: center; white-space: pre; color: var(--accent); }
   .right  { justify-self: start;  white-space: pre; }
 
   /* ── Paused sentence view ── */
   .sentence {
-    font-size: 1.6rem;
-    max-width: 600px;
-    margin: auto;
-    text-align: center;
-    line-height: 1.6;
-    padding: 20px;
+    font-size: 1.6rem; max-width: 600px; margin: auto;
+    text-align: center; line-height: 1.6; padding: 20px;
   }
-
   .paused-view {
-    font-size: 1.6rem;
-    max-width: 700px;
-    margin: auto;
-    text-align: center;
-    line-height: 1.8;
-    color: var(--muted);
-    overflow-y: auto;
-    max-height: 35vh;
-    padding: 12px;
+    font-size: 1.6rem; max-width: 700px; margin: auto;
+    text-align: center; line-height: 1.8; color: var(--muted);
+    overflow-y: auto; max-height: 35vh; padding: 12px;
+    scroll-behavior: smooth;
   }
-
   .pause-word   { color: var(--muted); }
   .current-word { color: var(--text); font-weight: 700; }
-  .word.starting { will-change: transform, opacity; }
 
   /* ── Controls ── */
-  .controls {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-    align-items: center;
-  }
-
+  .controls { display: flex; justify-content: center; gap: 12px; align-items: center; }
   button {
-    padding: 10px 22px;
-    border-radius: 50px;
-    border: 1px solid var(--border);
-    background: var(--panel);
-    color: var(--text);
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    padding: 10px 22px; border-radius: 50px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); font-weight: 600; font-size: 0.9rem;
+    cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
     transition: transform 0.12s, box-shadow 0.12s;
   }
-
-  button:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-  }
-
-  button:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
+  button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
 
   /* ── Bottom bar ── */
   .bottom-bar {
-    position: sticky;
-    bottom: 0;
-    padding: 16px 20px 20px;
-    border-radius: 24px;
-    border: 1px solid var(--border);
-    background: var(--panel);
-    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    position: sticky; bottom: 0; padding: 16px 20px 20px;
+    border-radius: 24px; border: 1px solid var(--border);
+    background: var(--panel); box-shadow: 0 4px 24px rgba(0,0,0,0.06);
     backdrop-filter: blur(8px);
   }
-
-  .speed-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 12px;
-  }
-
+  .speed-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
   .label { color: var(--muted); font-size: 0.875rem; }
   .value { font-weight: 800; color: var(--accent); }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
 
-  input[type="range"] {
-    width: 100%;
-    accent-color: var(--accent);
+    /* ── Fixed Buttons ── */
+  .stats-btn, .position-btn {
+    position: fixed; top: 20px; z-index: 1000;
+    background: var(--panel); border: none; border-radius: 14px;
+    width: 44px; height: 44px; cursor: pointer;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s, box-shadow 0.15s;
+    pointer-events: all; padding: 0; text-decoration: none;
+  }
+  
+  /* WICHTIG: Wieder auf 76px gesetzt, damit sie das globale Layout-Menü nicht verdecken! */
+  .stats-btn { right: 76px; font-size: 1.3rem; line-height: 1; }
+  .position-btn { left: 76px; font-size: 1rem; font-weight: 800; line-height: 1; color: var(--muted); }
+  
+  .stats-btn:hover, .position-btn:hover {
+    transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  }
+  .position-btn:hover { color: var(--accent); }
+
+  /* ── Position Modal ── */
+  .position-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(4px); display: grid; place-items: center;
+    z-index: 2000; animation: fadeIn 0.15s ease;
+  }
+  .position-card {
+    background: var(--panel); border-radius: 24px; padding: 32px 28px;
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+    box-shadow: 0 20px 60px var(--shadow); width: 280px;
+    animation: popIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  .position-title { font-size: 1.1rem; font-weight: 800; color: var(--text); letter-spacing: -0.3px; }
+  .position-sub { font-size: 0.82rem; color: var(--muted); margin-top: -8px; }
+  .position-row { display: flex; align-items: center; gap: 10px; width: 100%; }
+  .position-input {
+    flex: 1; border: 2px solid var(--border); border-radius: 12px;
+    padding: 10px 14px; font-size: 1.1rem; font-weight: 700; color: var(--text);
+    background: var(--panel-inner); outline: none; transition: border-color 0.15s; width: 100%;
+  }
+  .position-input:focus { border-color: var(--accent); }
+  .position-of { font-size: 0.85rem; color: var(--muted); white-space: nowrap; font-weight: 600; }
+  .position-go {
+    background: var(--accent); color: white; border: none; padding: 12px 28px;
+    border-radius: 50px; font-size: 0.95rem; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 16px var(--accent-shadow); transition: transform 0.15s, box-shadow 0.15s; width: 100%;
+  }
+  .position-go:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--accent-shadow); }
+
+  .meta-center {
+    font-size: 0.75rem; font-weight: 600; color: var(--muted); opacity: 0.7;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 120px; text-align: center;
   }
 
   @media (max-width: 430px) {
     .paused-view { font-size: 1.1rem; line-height: 1.5; }
-  }
-
-.stats-btn {
-    position: fixed;
-    top: 20px;
-    right: 76px;
-    z-index: 1000;
-    background: var(--panel);
-    border: none;
-    border-radius: 14px;
-    width: 44px;
-    height: 44px;
-    font-size: 1.3rem;
-    line-height: 1;
-    cursor: pointer;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.15s, box-shadow 0.15s;
-    pointer-events: all;
-    padding: 0;
-  }
-
-  .stats-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-  }
-
-  .position-btn {
-    position: fixed;
-    top: 20px;
-    left: 76px;
-    z-index: 1000;
-    background: var(--panel);
-    border: none;
-    border-radius: 14px;
-    width: 44px;
-    height: 44px;
-    font-size: 1rem;
-    font-weight: 800;
-    line-height: 1;
-    cursor: pointer;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.15s, box-shadow 0.15s;
-    color: var(--muted);
-    pointer-events: all;
-    padding: 0;
-  }
-
-  .position-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-    color: var(--accent);
-  }
-
-  .position-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.3);
-    backdrop-filter: blur(4px);
-    display: grid;
-    place-items: center;
-    z-index: 2000;
-    animation: fadeIn 0.15s ease;
-  }
-
-  .position-card {
-    background: var(--panel);
-    border-radius: 24px;
-    padding: 32px 28px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-    box-shadow: 0 20px 60px var(--shadow);
-    width: 280px;
-    animation: popIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
-  @keyframes popIn {
-    from { transform: scale(0.85); opacity: 0; }
-    to   { transform: scale(1);    opacity: 1; }
-  }
-
-  .position-title {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: var(--text);
-    letter-spacing: -0.3px;
-  }
-
-  .position-sub {
-    font-size: 0.82rem;
-    color: var(--muted);
-    margin-top: -8px;
-  }
-
-  .position-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-  }
-
-  .position-input {
-    flex: 1;
-    border: 2px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 14px;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text);
-    background: var(--panel-inner);
-    outline: none;
-    transition: border-color 0.15s;
-    width: 100%;
-  }
-
-  .position-input:focus {
-    border-color: var(--accent);
-  }
-
-  .position-of {
-    font-size: 0.85rem;
-    color: var(--muted);
-    white-space: nowrap;
-    font-weight: 600;
-  }
-
-  .position-go {
-    background: var(--accent);
-    color: white;
-    border: none;
-    padding: 12px 28px;
-    border-radius: 50px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    cursor: pointer;
-    box-shadow: 0 4px 16px var(--accent-shadow);
-    transition: transform 0.15s, box-shadow 0.15s;
-    width: 100%;
-  }
-
-  .position-go:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px var(--accent-shadow);
-  }
-
-  .meta-center {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--muted);
-    opacity: 0.7;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 120px;
-    text-align: center;
   }
 </style>

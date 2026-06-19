@@ -1,12 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
-  import { goto } from '$app/navigation';
-
-  onMount(() => {
-    const theme = localStorage.getItem('glimpse-theme');
-    if (theme === 'dark') document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-  });
+  import { onDestroy } from 'svelte';
 
   // ── Players ────────────────────────────────────────────────
   let players: string[] = ['Michel', 'Jim', 'Nicolas', 'Jang'];
@@ -44,8 +37,8 @@
 
   // ── Wheel geometry ─────────────────────────────────────────
   const CX = 200, CY = 200, R = 185;
+  const toRad = (deg: number) => (deg - 90) * Math.PI / 180;
 
-  // Warm palette cycling
   const PALETTE = [
     '#e8734a', '#5ba3c9', '#7dc47a', '#f0b84b',
     '#c97bb2', '#6ec6c0', '#e87a7a', '#a78bfa',
@@ -53,19 +46,17 @@
   ];
 
   function slicePath(startAngle: number, endAngle: number): string {
-    const s = (startAngle - 90) * Math.PI / 180;
-    const e = (endAngle - 90) * Math.PI / 180;
-    const x1 = CX + R * Math.cos(s);
-    const y1 = CY + R * Math.sin(s);
-    const x2 = CX + R * Math.cos(e);
-    const y2 = CY + R * Math.sin(e);
+    const x1 = CX + R * Math.cos(toRad(startAngle));
+    const y1 = CY + R * Math.sin(toRad(startAngle));
+    const x2 = CX + R * Math.cos(toRad(endAngle));
+    const y2 = CY + R * Math.sin(toRad(endAngle));
     const large = endAngle - startAngle > 180 ? 1 : 0;
     return `M ${CX} ${CY} L ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} Z`;
   }
 
   function labelPos(startAngle: number, endAngle: number, r: number) {
-    const mid = ((startAngle + endAngle) / 2 - 90) * Math.PI / 180;
-    return { x: CX + r * Math.cos(mid), y: CY + r * Math.sin(mid) };
+    const mid = (startAngle + endAngle) / 2;
+    return { x: CX + r * Math.cos(toRad(mid)), y: CY + r * Math.sin(toRad(mid)) };
   }
 
   $: sliceAngle = 360 / players.length;
@@ -79,14 +70,13 @@
   }));
 
   // ── Spin physics ───────────────────────────────────────────
-  let rotation = 0;       // current visual rotation (degrees)
-  let velocity = 0;       // degrees/frame
+  let rotation = 0;
+  let velocity = 0;
   let spinning = false;
   let rafId: number | null = null;
 
   // Drag tracking
   let isDragging = false;
-  let lastAngle = 0;
   let lastTime = 0;
   let dragVelocity = 0;
   let prevAngle = 0;
@@ -109,9 +99,7 @@
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const svgX = ((clientX - rect.left) / rect.width) * 400;
     const svgY = ((clientY - rect.top) / rect.height) * 400;
-    const dx = svgX - CX;
-    const dy = svgY - CY;
-    return Math.atan2(dy, dx) * (180 / Math.PI);
+    return Math.atan2(svgY - CY, svgX - CX) * (180 / Math.PI);
   }
 
   function onPointerDown(e: MouseEvent | TouchEvent) {
@@ -119,8 +107,7 @@
     winner = null;
     showResult = false;
     isDragging = true;
-    lastAngle = getAngleFromEvent(e);
-    prevAngle = lastAngle;
+    prevAngle = getAngleFromEvent(e);
     lastTime = performance.now();
     dragVelocity = 0;
     velocity = 0;
@@ -132,16 +119,15 @@
     const now = performance.now();
     const current = getAngleFromEvent(e);
     const dt = now - lastTime;
+    
     if (dt > 0) {
       let delta = current - prevAngle;
-      // handle wrap
       if (delta > 180) delta -= 360;
       if (delta < -180) delta += 360;
       rotation += delta;
-      dragVelocity = delta / dt * 16; // degrees per frame (at 60fps)
+      dragVelocity = delta / dt * 16; 
     }
     prevAngle = current;
-    lastAngle = current;
     lastTime = now;
   }
 
@@ -149,7 +135,6 @@
     if (!isDragging) return;
     isDragging = false;
     velocity = dragVelocity;
-    // minimum spin if flicked hard enough
     if (Math.abs(velocity) > 1) {
       spinning = true;
       animate();
@@ -173,8 +158,6 @@
   }
 
   function pickWinner() {
-    // The pointer is at top (270° in SVG = -90°). 
-    // Normalize rotation to find which slice is at top.
     const normalized = (((-rotation % 360) + 360) % 360);
     const winnerIndex = Math.floor(normalized / sliceAngle) % players.length;
     winner = players[winnerIndex];
@@ -190,6 +173,11 @@
 
   function spawnConfetti() {
     const colors = ['#e8734a','#5ba3c9','#7dc47a','#f0b84b','#c97bb2','#a78bfa','#f472b6'];
+    
+    // Canvas Größe nur einmal beim Start setzen!
+    canvasEl.width = window.innerWidth;
+    canvasEl.height = window.innerHeight;
+
     confettiParticles = Array.from({ length: 120 }, () => ({
       x: Math.random() * window.innerWidth,
       y: -20,
@@ -208,8 +196,6 @@
   function animateConfetti() {
     if (!canvasEl) return;
     const ctx = canvasEl.getContext('2d')!;
-    canvasEl.width = window.innerWidth;
-    canvasEl.height = window.innerHeight;
     ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
 
     let alive = false;
@@ -270,7 +256,15 @@
   $: fontSize = players.length <= 4 ? 16 : players.length <= 7 ? 13 : 11;
 </script>
 
-<!-- Confetti canvas (fullscreen, pointer-events none) -->
+<!-- Globale Window-Events für flüssiges Dragging außerhalb des SVGs -->
+<svelte:window 
+  on:mousemove={onPointerMove} 
+  on:mouseup={onPointerUp} 
+  on:touchmove|preventDefault={onPointerMove} 
+  on:touchend={onPointerUp} 
+/>
+
+<!-- Confetti canvas -->
 <canvas bind:this={canvasEl} class="confetti-canvas"></canvas>
 
 <!-- Result overlay -->
@@ -288,15 +282,14 @@
 <main>
   <div class="hero">
     <div class="header">
-      <span class="logo-icon">🎡</span>
+      <span class="logo-icon" aria-hidden="true">🎡</span>
       <h1>Wheelit</h1>
       <p class="tagline">Dreh das Rad – entscheide fair</p>
     </div>
 
     <!-- Wheel -->
     <div class="wheel-wrap">
-      <!-- Pointer -->
-      <div class="pointer">▼</div>
+      <div class="pointer" aria-hidden="true">▼</div>
 
       <svg
         bind:this={svgEl}
@@ -304,30 +297,21 @@
         class="wheel"
         class:spinning
         on:mousedown={onPointerDown}
-        on:mousemove={onPointerMove}
-        on:mouseup={onPointerUp}
-        on:mouseleave={onPointerUp}
         on:touchstart|preventDefault={onPointerDown}
-        on:touchmove|preventDefault={onPointerMove}
-        on:touchend={onPointerUp}
         style="transform: rotate({rotation}deg)"
         role="img"
         aria-label="Glücksrad"
       >
-        <!-- Outer glow ring -->
         <circle cx={CX} cy={CY} r={R + 4} fill="none" stroke="rgba(232,115,74,0.15)" stroke-width="8"/>
 
-        <!-- Slices -->
         {#each slices as slice, i}
           <path d={slicePath(slice.start, slice.end)} fill={slice.color} />
-          <!-- Divider lines -->
           <line
             x1={CX} y1={CY}
-            x2={CX + R * Math.cos((slice.start - 90) * Math.PI / 180)}
-            y2={CY + R * Math.sin((slice.start - 90) * Math.PI / 180)}
+            x2={CX + R * Math.cos(toRad(slice.start))}
+            y2={CY + R * Math.sin(toRad(slice.start))}
             stroke="white" stroke-width="2" opacity="0.6"
           />
-          <!-- Label -->
           <text
             x={slice.label.x}
             y={slice.label.y}
@@ -344,7 +328,6 @@
           </text>
         {/each}
 
-        <!-- Center cap -->
         <circle cx={CX} cy={CY} r="26" fill="var(--panel)" filter="url(#shadow)"/>
         <circle cx={CX} cy={CY} r="20" fill="var(--panel-inner)" stroke="var(--accent)" stroke-width="3"/>
         <circle cx={CX} cy={CY} r="6" fill="#e8734a"/>
@@ -357,7 +340,10 @@
       </svg>
     </div>
 
-    <p class="hint">{spinning ? '🌀 Dreht sich...' : isDragging ? '✊ Loslassen zum Starten' : '👆 Rad drehen zum Starten'}</p>
+    <!-- aria-live für Screenreader -->
+    <p class="hint" aria-live="polite">
+      {spinning ? '🌀 Dreht sich...' : isDragging ? '✊ Loslassen zum Starten' : '👆 Rad drehen zum Starten'}
+    </p>
 
     <!-- Players editor -->
     <div class="players-box">
@@ -397,288 +383,48 @@
 </main>
 
 <style>
-  .confetti-canvas {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 200;
-  }
+  /* CSS bleibt unverändert, da es bereits absolut perfekt war! */
+  .confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 200; }
+  .result-overlay { position: fixed; inset: 0; background: rgba(26, 26, 26, 0.55); backdrop-filter: blur(6px); display: grid; place-items: center; z-index: 300; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .result-card { background: var(--panel); border-radius: 32px; padding: 48px 40px; text-align: center; box-shadow: 0 20px 80px var(--shadow); display: flex; flex-direction: column; align-items: center; gap: 12px; animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); max-width: 340px; width: 90%; }
+  @keyframes popIn { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .result-emoji { font-size: 3.5rem; animation: bounce 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.1s both; }
+  @keyframes bounce { from { transform: scale(0); } to { transform: scale(1); } }
+  .result-label { font-size: 0.9rem; color: var(--muted); font-weight: 600; letter-spacing: 0.3px; }
+  .result-name { font-size: 2.8rem; font-weight: 900; color: var(--text); letter-spacing: -1.5px; line-height: 1; }
+  .result-close { margin-top: 12px; background: var(--accent); color: white; border: none; padding: 14px 36px; border-radius: 50px; font-size: 0.95rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 20px var(--accent-shadow); transition: transform 0.15s, box-shadow 0.15s; }
+  .result-close:hover { transform: translateY(-2px); box-shadow: 0 8px 28px var(--accent-shadow); }
 
-  .result-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(26, 26, 26, 0.55);
-    backdrop-filter: blur(6px);
-    display: grid;
-    place-items: center;
-    z-index: 300;
-    animation: fadeIn 0.25s ease;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-
-  .result-card {
-    background: var(--panel);
-    border-radius: 32px;
-    padding: 48px 40px;
-    text-align: center;
-    box-shadow: 0 20px 80px var(--shadow);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-    max-width: 340px;
-    width: 90%;
-  }
-
-  @keyframes popIn {
-    from { transform: scale(0.7); opacity: 0; }
-    to   { transform: scale(1);   opacity: 1; }
-  }
-
-  .result-emoji {
-    font-size: 3.5rem;
-    animation: bounce 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.1s both;
-  }
-
-  @keyframes bounce {
-    from { transform: scale(0); }
-    to   { transform: scale(1); }
-  }
-
-  .result-label {
-    font-size: 0.9rem;
-    color: var(--muted);
-    font-weight: 600;
-    letter-spacing: 0.3px;
-  }
-
-  .result-name {
-    font-size: 2.8rem;
-    font-weight: 900;
-    color: var(--text);
-    letter-spacing: -1.5px;
-    line-height: 1;
-  }
-
-  .result-close {
-    margin-top: 12px;
-    background: var(--accent);
-    color: white;
-    border: none;
-    padding: 14px 36px;
-    border-radius: 50px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    cursor: pointer;
-    box-shadow: 0 4px 20px var(--accent-shadow);
-    transition: transform 0.15s, box-shadow 0.15s;
-  }
-
-  .result-close:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 28px var(--accent-shadow);
-  }
-
-  main {
-    min-height: 100vh;
-    display: grid;
-    place-items: center;
-    padding: 72px 24px 40px;
-    position: relative;
-  }
-
-  .hero {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 24px;
-    max-width: 480px;
-    width: 100%;
-    text-align: center;
-  }
-
-  .header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-  }
-
+  main { min-height: 100vh; display: grid; place-items: center; padding: 72px 24px 40px; position: relative; }
+  .hero { display: flex; flex-direction: column; align-items: center; gap: 24px; max-width: 480px; width: 100%; text-align: center; }
+  .header { display: flex; flex-direction: column; align-items: center; gap: 6px; }
   .logo-icon { font-size: 2.4rem; }
+  h1 { font-size: 2.8rem; font-weight: 900; color: var(--text); letter-spacing: -1.5px; }
+  .tagline { font-size: 0.95rem; color: var(--muted); font-weight: 500; }
 
-  h1 {
-    font-size: 2.8rem;
-    font-weight: 900;
-    color: var(--text);
-    letter-spacing: -1.5px;
-  }
-
-  .tagline {
-    font-size: 0.95rem;
-    color: var(--muted);
-    font-weight: 500;
-  }
-
-  .wheel-wrap {
-    position: relative;
-    width: min(80vw, 360px);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .pointer {
-    position: absolute;
-    top: -16px;
-    z-index: 10;
-    font-size: 1.8rem;
-    color: var(--text);
-    line-height: 1;
-    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25));
-    pointer-events: none;
-  }
-
-  .wheel {
-    width: 100%;
-    cursor: grab;
-    filter: drop-shadow(0 8px 32px var(--shadow));
-    user-select: none;
-    touch-action: none;
-    will-change: transform;
-  }
-
+  .wheel-wrap { position: relative; width: min(80vw, 360px); display: flex; flex-direction: column; align-items: center; }
+  .pointer { position: absolute; top: -16px; z-index: 10; font-size: 1.8rem; color: var(--text); line-height: 1; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25)); pointer-events: none; }
+  .wheel { width: 100%; cursor: grab; filter: drop-shadow(0 8px 32px var(--shadow)); user-select: none; touch-action: none; will-change: transform; }
   .wheel:active { cursor: grabbing; }
   .wheel.spinning { cursor: default; }
 
-  .hint {
-    font-size: 0.88rem;
-    color: var(--muted);
-    font-weight: 600;
-    letter-spacing: 0.2px;
-    height: 20px;
-  }
+  .hint { font-size: 0.88rem; color: var(--muted); font-weight: 600; letter-spacing: 0.2px; height: 20px; }
 
-  .players-box {
-    background: var(--panel);
-    border-radius: 24px;
-    padding: 20px;
-    width: 100%;
-    box-shadow: 0 2px 16px var(--shadow);
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
+  .players-box { background: var(--panel); border-radius: 24px; padding: 20px; width: 100%; box-shadow: 0 2px 16px var(--shadow); display: flex; flex-direction: column; gap: 14px; }
+  .players-header { display: flex; justify-content: space-between; align-items: center; }
+  .players-title { font-size: 0.82rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; }
+  .add-btn { background: var(--accent); color: white; border: none; padding: 8px 18px; border-radius: 50px; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; box-shadow: 0 3px 12px var(--accent-shadow); }
+  .add-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 18px var(--accent-shadow); }
+  .add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  .players-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .players-title {
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.7px;
-  }
-
-  .add-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    padding: 8px 18px;
-    border-radius: 50px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.15s;
-    box-shadow: 0 3px 12px var(--accent-shadow);
-  }
-
-  .add-btn:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 5px 18px var(--accent-shadow);
-  }
-
-  .add-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .players-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .player-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    background: var(--panel-inner);
-    border-radius: 14px;
-    transition: background 0.15s;
-  }
-
-  .player-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .player-name {
-    flex: 1;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text);
-    text-align: left;
-    cursor: pointer;
-    padding: 2px 0;
-  }
-
-  .player-name:hover {
-    color: var(--accent);
-  }
-
-  .player-input {
-    flex: 1;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text);
-    border: none;
-    background: transparent;
-    outline: 2px solid var(--accent);
-    border-radius: 8px;
-    padding: 2px 6px;
-  }
-
-  .remove-btn {
-    background: none;
-    border: none;
-    color: var(--muted);
-    font-size: 0.8rem;
-    cursor: pointer;
-    padding: 4px 6px;
-    border-radius: 8px;
-    transition: color 0.15s, background 0.15s;
-    flex-shrink: 0;
-  }
-
-  .remove-btn:hover:not(:disabled) {
-    color: var(--accent);
-    background: rgba(232,115,74,0.08);
-  }
-
-  .remove-btn:disabled {
-    opacity: 0.25;
-    cursor: not-allowed;
-  }
+  .players-list { display: flex; flex-direction: column; gap: 8px; }
+  .player-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--panel-inner); border-radius: 14px; transition: background 0.15s; }
+  .player-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .player-name { flex: 1; font-size: 0.95rem; font-weight: 600; color: var(--text); text-align: left; cursor: pointer; padding: 2px 0; }
+  .player-name:hover { color: var(--accent); }
+  .player-input { flex: 1; font-size: 0.95rem; font-weight: 600; color: var(--text); border: none; background: transparent; outline: 2px solid var(--accent); border-radius: 8px; padding: 2px 6px; }
+  .remove-btn { background: none; border: none; color: var(--muted); font-size: 0.8rem; cursor: pointer; padding: 4px 6px; border-radius: 8px; transition: color 0.15s, background 0.15s; flex-shrink: 0; }
+  .remove-btn:hover:not(:disabled) { color: var(--accent); background: rgba(232,115,74,0.08); }
+  .remove-btn:disabled { opacity: 0.25; cursor: not-allowed; }
 </style>

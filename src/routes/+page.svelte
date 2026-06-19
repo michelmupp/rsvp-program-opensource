@@ -1,5 +1,59 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
+  // Wir lagern die Daten in ein Array aus. 
+  // So kannst du später ganz einfach neue Apps hinzufügen!
+  const apps = [
+    {
+      title: 'RSVP Reader',
+      sub: 'Schneller lesen, mehr verstehen',
+      icon: '👁️',
+      href: '/reader',
+      cta: 'Start Reading',
+      features: [
+        { icon: '⚡', text: 'Bis zu 1000 Wörter pro Minute' },
+        { icon: '📚', text: 'EPUB Bücher laden' },
+        { icon: '🌙', text: 'Tag- & Nachtmodus' }
+      ]
+    },
+    {
+      title: 'QR Generator',
+      sub: 'Text oder URL als QR Code',
+      // SVG direkt als String speichern (aria-hidden für Screenreader hinzugefügt)
+      icon: `<svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" aria-hidden="true">
+              <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm7-2h7v7h-7V3zm2 2v3h3V5h-3zM3 13h7v7H3v-7zm2 2v3h3v-3H5zm11 0h2v2h-2v-2zm-4-2h2v2h-2v-2zm2 2h2v2h-2v-2zm-2 2h2v2h-2v-2zm2 2h2v2h-2v-2zm2-2h2v2h-2v-2zm0-4h2v2h-2v-2zm2 2h2v2h-2v-2z"/>
+            </svg>`,
+      href: '/qr',
+      cta: 'QR erstellen',
+      features: [
+        { icon: '⌨️', text: 'Text oder URL eingeben' },
+        { icon: '⚡', text: 'Sofort generiert' },
+        { icon: '💾', text: 'Als PNG herunterladen' }
+      ]
+    },
+    {
+      title: 'Pomodoro Timer',
+      sub: 'Fokussiert lernen, bewusst pausieren',
+      icon: '🍅',
+      href: '/pomodoro',
+      cta: 'Start Timer',
+      features: [
+        { icon: '🕐', text: 'Lernzeit per Uhr einstellen' },
+        { icon: '☕', text: 'Automatische Pausen' },
+        { icon: '📊', text: 'Session-Statistiken' }
+      ]
+    },
+    {
+      title: 'Wheelit',
+      sub: 'Fair entscheiden, zufällig bestimmen',
+      icon: '🎡',
+      href: '/wheelit',
+      cta: 'Rad drehen',
+      features: [
+        { icon: '🌀', text: 'Rad drehen & loslassen' },
+        { icon: '👥', text: 'Spieler anpassen' },
+        { icon: '🎉', text: 'Konfetti-Gewinner' }
+      ]
+    }
+  ];
 </script>
 
 <main>
@@ -7,126 +61,45 @@
 
     <!-- Welcome -->
     <div class="welcome">
-      <span class="logo-icon">✦</span>
+      <span class="logo-icon" aria-hidden="true">✦</span>
       <h1>Glimpse</h1>
       <p class="tagline">Deine kleinen Tools für den Alltag.<br>Einfach. Schnell. Schön.</p>
     </div>
 
-    <!-- RSVP Reader -->
-    <div class="app-card">
-      <div class="app-header">
-        <span class="app-icon">👁️</span>
-        <div>
-          <h2>RSVP Reader</h2>
-          <p class="app-sub">Schneller lesen, mehr verstehen</p>
+    <!-- Dynamische Generierung der App-Karten -->
+    {#each apps as app (app.title)}
+      <article class="app-card">
+        <div class="app-header">
+          <!-- Wenn das Icon ein SVG String ist, nutzen wir @html, ansonsten rendern wir es als Text -->
+          <span class="app-icon" aria-hidden="true">
+            {#if app.icon.startsWith('<svg')}
+              {@html app.icon}
+            {:else}
+              {app.icon}
+            {/if}
+          </span>
+          <div>
+            <h2>{app.title}</h2>
+            <p class="app-sub">{app.sub}</p>
+          </div>
         </div>
-      </div>
-      <div class="features">
-        <div class="feature">
-          <span>⚡</span>
-          <p>Bis zu 1000 Wörter pro Minute</p>
-        </div>
-        <div class="feature">
-          <span>📚</span>
-          <p>EPUB Bücher laden</p>
-        </div>
-        <div class="feature">
-          <span>🌙</span>
-          <p>Tag- & Nachtmodus</p>
-        </div>
-      </div>
-      <button class="cta" on:click={() => goto('/reader')}>
-        Start Reading
-      </button>
-    </div>
 
-    <!-- QR Generator -->
-    <div class="app-card">
-      <div class="app-header">
-        <span class="logo-icon">
-          <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
-            <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm7-2h7v7h-7V3zm2 2v3h3V5h-3zM3 13h7v7H3v-7zm2 2v3h3v-3H5zm11 0h2v2h-2v-2zm-4-2h2v2h-2v-2zm2 2h2v2h-2v-2zm-2 2h2v2h-2v-2zm2 2h2v2h-2v-2zm2-2h2v2h-2v-2zm0-4h2v2h-2v-2zm2 2h2v2h-2v-2z"/>
-          </svg>
-        </span>
-        <div>
-          <h2>QR Generator</h2>
-          <p class="app-sub">Text oder URL als QR Code</p>
+        <div class="features">
+          {#each app.features as feature}
+            <div class="feature">
+              <span aria-hidden="true">{feature.icon}</span>
+              <p>{feature.text}</p>
+            </div>
+          {/each}
         </div>
-      </div>
-      <div class="features">
-        <div class="feature">
-          <span>⌨️</span>
-          <p>Text oder URL eingeben</p>
-        </div>
-        <div class="feature">
-          <span>⚡</span>
-          <p>Sofort generiert</p>
-        </div>
-        <div class="feature">
-          <span>💾</span>
-          <p>Als PNG herunterladen</p>
-        </div>
-      </div>
-      <button class="cta" on:click={() => goto('/qr')}>
-        QR erstellen
-      </button>
-    </div>
 
-    <!-- Pomodoro Timer -->
-    <div class="app-card">
-      <div class="app-header">
-        <span class="app-icon">🍅</span>
-        <div>
-          <h2>Pomodoro Timer</h2>
-          <p class="app-sub">Fokussiert lernen, bewusst pausieren</p>
-        </div>
-      </div>
-      <div class="features">
-        <div class="feature">
-          <span>🕐</span>
-          <p>Lernzeit per Uhr einstellen</p>
-        </div>
-        <div class="feature">
-          <span>☕</span>
-          <p>Automatische Pausen</p>
-        </div>
-        <div class="feature">
-          <span>📊</span>
-          <p>Session-Statistiken</p>
-        </div>
-      </div>
-      <button class="cta" on:click={() => goto('/pomodoro')}>
-        Start Timer
-      </button>
-    </div>
+        <!-- Standard <a> Tag statt button + goto() für bessere Accessibility -->
+        <a href={app.href} class="cta">
+          {app.cta}
+        </a>
+      </article>
+    {/each}
 
-    <!-- Wheelit -->
-    <div class="app-card">
-      <div class="app-header">
-        <span class="app-icon">🎡</span>
-        <div>
-          <h2>Wheelit</h2>
-          <p class="app-sub">Fair entscheiden, zufällig bestimmen</p>
-        </div>
-      </div>
-      <div class="features">
-        <div class="feature">
-          <span>🌀</span>
-          <p>Rad drehen & loslassen</p>
-        </div>
-        <div class="feature">
-          <span>👥</span>
-          <p>Spieler anpassen</p>
-        </div>
-        <div class="feature">
-          <span>🎉</span>
-          <p>Konfetti-Gewinner</p>
-        </div>
-      </div>
-      <button class="cta" on:click={() => goto('/wheelit')}>
-        Rad drehen
-      </button>
-    </div>
   </div>
 </main>
 
@@ -159,6 +132,7 @@
 
   .logo-icon {
     font-size: 2.8rem;
+    color: var(--text);
   }
 
   h1 {
@@ -175,6 +149,7 @@
   }
 
   /* App cards */
+  /* <article> ist semantisch passender als <div> für inhaltliche Karten */
   .app-card {
     background: var(--panel);
     border-radius: 24px;
@@ -198,6 +173,9 @@
   .app-icon {
     font-size: 2.4rem;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   h2 {
@@ -241,11 +219,15 @@
     font-size: 1.4rem;
   }
 
-  /* Buttons */
+  /* Buttons (als Links gestyled) */
   .cta {
     background: var(--accent);
     color: var(--panel);
-    border: none;
+    /* Wichtig, da wir jetzt <a> nutzen: */
+    text-decoration: none; 
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
     padding: 16px 48px;
     border-radius: 50px;
     font-size: 1.05rem;
@@ -259,21 +241,10 @@
 
   .cta:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 28px rgba(232, 115, 74, 0.45);
+    box-shadow: 0 8px 28px var(--accent-shadow); /* Nutzt jetzt die Variable statt hardcoded RGBA */
   }
 
   .cta:active {
     transform: translateY(0);
   }
-
-  .cta.pomodoro {
-    background: var(--text);
-    box-shadow: 0 4px 20px var(--shadow);
-  }
-
-  .cta.pomodoro:hover {
-    box-shadow: 0 8px 28px var(--shadow);
-  }
-
-  .logo-icon { font-size: 2.8rem; color: var(--text); }
 </style>
